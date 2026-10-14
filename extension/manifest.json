@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Paper Margins — 論文と会話の注釈",
+  "version": "1.0.7",
+  "description": "PDFの選択箇所に、ChatGPTの質問と回答を保存。API不要・ローカル保存。",
+  "minimum_chrome_version": "142",
+  "icons": {"16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png"},
+  "permissions": ["storage", "unlimitedStorage", "clipboardWrite"],
+  "host_permissions": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  "action": {"default_title": "Paper Marginsを開く"},
+  "background": {"service_worker": "background.js", "type": "module"},
+  "content_scripts": [{"matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["capture-core.js", "conversation-guard.js", "input-bridge.js", "chatgpt.js"], "run_at": "document_idle"}],
+  "content_security_policy": {"extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self';"}
+}
