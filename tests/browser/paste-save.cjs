@@ -3,7 +3,7 @@ const {chromium}=require('playwright');
 async function main(){fs.mkdirSync(path.resolve('artifacts'),{recursive:true});
  const local={},session={},listeners={};let failWrite=false;
  const area=data=>({get:async k=>structuredClone(k?{[k]:data[k]}:data),set:async v=>{if(data===local&&failWrite)throw Error('書き込み失敗（テスト）');Object.assign(data,structuredClone(v));},remove:async k=>{delete data[k];},setAccessLevel:async()=>{}});
- global.chrome={storage:{local:area(local),session:area(session)},runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.message=fn}},action:{onClicked:{addListener(){}}},tabs:{onRemoved:{addListener(){}}}};
+ global.chrome={storage:{local:area(local),session:area(session)},runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.message=fn}},commands:{onCommand:{addListener(){}}},action:{onClicked:{addListener(){}}},tabs:{onRemoved:{addListener(){}}}};
  await import('../../extension/background.js');
  const sender={url:'https://chatgpt.com/c/test',tab:{id:2,url:'https://chatgpt.com/c/test'}};
  const request=m=>new Promise(r=>listeners.message(m,sender,r));

@@ -9,6 +9,10 @@ async function openReader() {
  await chrome.tabs.create({url});
 }
 chrome.action.onClicked.addListener(()=>openReader().catch(console.error));
+chrome.commands.onCommand.addListener(async command=>{
+ if(command!=='toggle-chat-panel')return;
+ try{const [tab]=await chrome.tabs.query({active:true,currentWindow:true});if(/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(tab?.url||''))await chrome.tabs.sendMessage(tab.id,{type:'TOGGLE_PANEL'});}catch{/* The page may be reloading; do not open an unsolicited panel. */}
+});
 async function handle(m,sender) {
  const internal=sender.url?.startsWith(chrome.runtime.getURL(''));
  const chat=/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(sender.url||'');
