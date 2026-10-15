@@ -1,0 +1,16 @@
+/* Paper Margins integration; upstream PDF.js viewer assets remain vendored. */
+.pdfViewer .page{border:0}
+.pdf-page{position:relative}
+.page-marks,.area-layer{position:absolute;inset:0;pointer-events:none;z-index:7}
+.mark{position:absolute;background:#e7c96566;border:1px solid #d4b14688;border-radius:2px;pointer-events:auto;cursor:pointer;padding:0;min-width:3px;min-height:3px}
+.mark:hover{background:#e7c96599}.mark.focused{background:#86baa577;border-color:#438868}
+.area-layer{display:none;cursor:crosshair;touch-action:none;pointer-events:auto;z-index:8}
+.area-mode .area-layer{display:block}.area-mode .textLayer{pointer-events:none}
+.draft-mark{position:absolute;z-index:9;pointer-events:none;background:#659d8950;border:2px solid #46846b;display:none}
+.edit-mode .page-marks{display:none}
+/* PDF selection is managed by the shelf so that the document and Q&A stay bound. */
+#secondaryOpenFile,#viewsManagerAddFileButton,#imageAltTextSettings,#imageAltTextSettingsSeparator{display:none!important}
+
+body{font-family:system-ui,"Noto Sans JP",sans-serif}#toolbarContainer,#secondaryToolbar,#viewsManager{font-family:system-ui,"Noto Sans JP",sans-serif}
+/* Native menu fonts don't have CJK coverage in every desktop environment. */
+:is(#toolbarContainer,#secondaryToolbar,#findbar,#viewsManager) :is(button,input,select,label,option){font-family:"Noto Sans JP",system-ui,sans-serif}

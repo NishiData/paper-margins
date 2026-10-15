@@ -19,3 +19,9 @@ html,body{width:100%;height:100%;overflow:hidden}
 .app{min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
 .shelf,main,.notes{min-height:0}
 #viewport,.notes,.shelf{overscroll-behavior:contain}
+
+/* The complete PDF.js viewer owns the PDF scroll container. */
+#viewport.standard-viewer{padding:0;overflow:hidden;display:flex;flex-direction:column}
+#pdf-viewer{border:0;width:100%;height:100%;flex:1;min-height:0;background:#e9ece5}
+#pdf-viewer[hidden]{display:none}footer{flex-wrap:wrap}#edit-status{color:var(--green)}
+body{font-family:"Noto Sans JP",system-ui,sans-serif}
