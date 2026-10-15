@@ -25,3 +25,24 @@ html,body{width:100%;height:100%;overflow:hidden}
 #pdf-viewer{border:0;width:100%;height:100%;flex:1;min-height:0;background:#e9ece5}
 #pdf-viewer[hidden]{display:none}footer{flex-wrap:wrap}#edit-status{color:var(--green)}
 body{font-family:"Noto Sans JP",system-ui,sans-serif}
+
+/* Keep app chrome short so the document takes most of the window. */
+:root{--header-height:36px}
+header{height:var(--header-height);padding:0 12px;gap:10px;flex-shrink:0}
+.brand{gap:8px}.brand-icon{font-size:23px;padding:0 7px;line-height:29px}.brand-icon span{font-size:14px}
+.brand strong{font-size:17px}.brand small,.local-badge{display:none}
+.header-actions{gap:5px}.header-actions button{padding:3px 8px;font-size:11px}
+.app{height:calc(100dvh - var(--header-height))}
+.docbar{padding:3px 12px;min-height:30px;gap:10px;flex-shrink:0}
+.docbar>div{min-width:0}.docbar .section-label{display:none}
+h1{font-size:12px;line-height:22px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.docbar>button{font-size:11px;padding:2px 8px}
+.tools{padding:3px 8px;gap:3px;flex-wrap:nowrap;overflow-x:auto;flex-shrink:0;min-height:34px}
+.tools button{font-size:11px;padding:3px 6px;flex-shrink:0}.tools label{flex-shrink:0}.tools input{font-size:11px;width:40px}
+.tools .divider{margin:0 3px;height:18px}.tools .spacer{min-width:4px}
+footer{padding:3px 10px;font-size:10px;gap:3px 10px;flex-shrink:0;line-height:1.5}
+#reading-hint{display:none}
+.compact.show-notes .notes,.show-notes .notes{top:var(--header-height)}
+@media(max-width:760px){.brand strong{font-size:14px}.brand-icon{display:none}header{padding:0 8px}.header-actions button{font-size:10px;padding:3px 6px}}
+
+body[data-mode="erase"] #reading-hint{display:block}

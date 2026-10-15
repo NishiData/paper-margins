@@ -23,10 +23,11 @@ export class StandardPDFReader extends ContinuousPDFReader {
     const app=this.app,w=this.frame.contentWindow,d=w.document,bus=app.eventBus;
     this.container=app.pdfViewer.container;this.stack=app.pdfViewer.viewer;
     this.stack.addEventListener('mouseup',e=>this.selectText(e));
+    d.addEventListener('pointerdown',e=>this.eraseAt(e).catch(this.onError),true);
     bus.on('pagechanging',({pageNumber})=>{this.currentPage=pageNumber;this.onPage(pageNumber);});
     for(const name of ['pagesinit','pagerendered','textlayerrendered','annotationeditorlayerrendered','scalechanging','rotationchanging'])bus.on(name,()=>this.syncViews());
     bus.on('annotationeditoruimanager',({uiManager})=>{this.uiManager=uiManager;});
-    bus.on('annotationeditormodechanged',({mode})=>{const m=mode===15?'ink':mode>0?'edit':this.mode==='area'?'area':'text';this.setMode(m);this.onMode?.(m);});
+    bus.on('annotationeditormodechanged',({mode})=>{const m=mode===15?(this.mode==='erase'?'erase':'ink'):mode>0?'edit':this.mode==='area'?'area':'text';this.setMode(m);this.onMode?.(m);});
     bus.on('editingstateschanged',()=>this.edited());
     const schedule=e=>{if(this.pdf&&(this.app.pdfViewer.annotationEditorMode>0||e.target.closest?.('.annotationEditorLayer,.annotationLayer,#editorInkParamsToolbar,#editorFreeTextParamsToolbar')))this.edited();};
     w.addEventListener('pointerup',e=>{this.pointerActive=false;schedule(e);});
@@ -84,10 +85,34 @@ export class StandardPDFReader extends ContinuousPDFReader {
   async jump(n){if(!this.pdf)return;this.app.pdfViewer.scrollPageIntoView({pageNumber:Math.max(1,Math.min(this.pdf.numPages,n))});this.syncViews();}
   setMode(mode){
     this.mode=mode;if(!this.app)return;
-    this.stack.classList.toggle('area-mode',mode==='area');this.stack.classList.toggle('edit-mode',mode==='ink'||mode==='edit');
+    this.stack.classList.toggle('area-mode',mode==='area');this.stack.classList.toggle('edit-mode',mode==='ink'||mode==='edit'||mode==='erase');
+    this.stack.classList.toggle('erase-mode',mode==='erase');
+    if(mode==='erase')this.uiManager?.currentLayer?.endDrawingSession();
     const current=this.app.pdfViewer.annotationEditorMode;
-    const desired=mode==='ink'?15:mode==='edit'?current:0;
+    const desired=mode==='ink'||mode==='erase'?15:mode==='edit'?current:0;
     if(current!==desired&&current!==-1)this.app.eventBus.dispatch('switchannotationeditormode',{source:this,mode:desired});
+  }
+  async eraseAt(event){
+    if(this.mode!=='erase'||event.button!==0)return;
+    const page=event.target.closest('.pdf-page');if(!page)return;
+    // Capture the gesture before PDF.js starts a new ink stroke.
+    event.preventDefault();event.stopImmediatePropagation();this.pointerActive=false;
+    let element=event.target.closest('.inkEditor');
+    if(!element)element=Array.from(page.querySelectorAll('.inkEditor')).reverse().find(el=>{const b=el.getBoundingClientRect();return event.clientX>=b.left-5&&event.clientX<=b.right+5&&event.clientY>=b.top-5&&event.clientY<=b.bottom+5;});
+    const editor=element&&this.uiManager?.getEditor(element.id);if(!editor)return;
+    this.erasing ||= new Set();if(this.erasing.has(editor))return;this.erasing.add(editor);
+    // PDF.js builds the edit toolbar asynchronously. Finish that before removal
+    // so its pending button builders don't try to access a deleted toolbar.
+    const pdf=this.pdf,manager=this.uiManager;
+    try{
+      await editor.addEditToolbar();
+      if(this.pdf!==pdf||this.mode!=='erase'||!element.isConnected)return;
+      manager.setSelected(editor);manager.delete();this.edited();
+    }finally{this.erasing.delete(editor);}
+  }
+  undoEdit(){
+    if(!this.uiManager)return;
+    this.uiManager.commitOrRemove();this.uiManager.currentLayer?.endDrawingSession();this.uiManager.undo();this.edited();
   }
   rects(note,v){
     if(!note.anchor.pdfRects?.length)return note.anchor.rects;

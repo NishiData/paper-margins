@@ -14,3 +14,9 @@
 body{font-family:system-ui,"Noto Sans JP",sans-serif}#toolbarContainer,#secondaryToolbar,#viewsManager{font-family:system-ui,"Noto Sans JP",sans-serif}
 /* Native menu fonts don't have CJK coverage in every desktop environment. */
 :is(#toolbarContainer,#secondaryToolbar,#findbar,#viewsManager) :is(button,input,select,label,option){font-family:"Noto Sans JP",system-ui,sans-serif}
+
+/* Erasing removes an ink object; native PDF text and other annotations stay intact. */
+.erase-mode .annotationEditorLayer,.erase-mode .inkEditor{cursor:crosshair!important}
+.erase-mode .inkEditor{pointer-events:auto!important}
+.erase-mode .inkEditor:hover{outline:2px dashed #cb6256;outline-offset:3px}
+.erase-mode .inkEditor .resizers,.erase-mode .editToolbar{display:none!important}
