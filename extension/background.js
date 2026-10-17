@@ -4,7 +4,7 @@ let writes=Promise.resolve();
 function serial(fn) {const p=writes.then(fn); writes=p.catch(()=>{}); return p;}
 async function openReader() {
  const url=chrome.runtime.getURL('reader.html');
- const tabs=await chrome.tabs.query({}); const existing=tabs.find(t=>t.url===url);
+ const tabs=await chrome.tabs.query({}); const existing=tabs.find(t=>t.url===url||t.url?.startsWith(url+'?'));
  if(existing){await chrome.tabs.update(existing.id,{active:true});await chrome.windows.update(existing.windowId,{focused:true});return;}
  await chrome.tabs.create({url});
 }
@@ -17,6 +17,7 @@ async function handle(m,sender) {
  const internal=sender.url?.startsWith(chrome.runtime.getURL(''));
  const chat=/^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(sender.url||'');
  if(!internal&&!chat) throw Error('許可されていない送信元です。');
+ if(m.type==='OPEN_PAPER_TAB'&&internal){if(!/^[a-f0-9]{64}$/.test(m.docId||''))throw Error('PDFの指定が不正です。');const tab=await chrome.tabs.create({url:chrome.runtime.getURL('reader.html')+'?paper='+m.docId,active:true});return {ok:true,tabId:tab.id};}
  if(m.type==='GET_CONTEXT') {const k='pm:context:'+sender.tab.id,ctx=(await chrome.storage.session.get(k))[k];if(!ctx)return null;const key=noteKey(ctx.noteId),note=(await chrome.storage.local.get(key))[key];return {...ctx,selectionImage:note?.selectionImage||null};}
  if(m.type==='STOP_CONTEXT') {await chrome.storage.session.remove('pm:context:'+sender.tab.id);return {ok:true};}
  if(m.type==='LIST_NOTE_TARGETS'&&chat){const data=await chrome.storage.local.get(null);return {notes:Object.entries(data).filter(([k])=>k.startsWith('pm:note:')).map(([,n])=>({id:n.id,docTitle:n.docTitle,page:n.anchor.page,title:n.title,excerpt:String(n.anchor.excerpt||'').slice(0,70),updatedAt:n.updatedAt})).sort((a,b)=>b.updatedAt-a.updatedAt)};}
