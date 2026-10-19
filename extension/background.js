@@ -1,3 +1,4 @@
+import {originalPDFInfo,originalPDFChunk} from './pdf-attachment.mjs';
 import {noteKey, validAnchor, mergeTurn,validateNote,makePrompt} from './core.mjs';
 chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}).catch(console.error);
 let writes=Promise.resolve();
@@ -19,6 +20,7 @@ async function handle(m,sender) {
  if(!internal&&!chat) throw Error('許可されていない送信元です。');
  if(m.type==='OPEN_PAPER_TAB'&&internal){if(!/^[a-f0-9]{64}$/.test(m.docId||''))throw Error('PDFの指定が不正です。');const tab=await chrome.tabs.create({url:chrome.runtime.getURL('reader.html')+'?paper='+m.docId,active:true});return {ok:true,tabId:tab.id};}
  if(m.type==='GET_CONTEXT') {const k='pm:context:'+sender.tab.id,ctx=(await chrome.storage.session.get(k))[k];if(!ctx)return null;const key=noteKey(ctx.noteId),note=(await chrome.storage.local.get(key))[key];return {...ctx,selectionImage:note?.selectionImage||null};}
+ if(m.type==='GET_PDF_CHUNK'&&chat){const ctx=(await chrome.storage.session.get('pm:context:'+sender.tab.id))['pm:context:'+sender.tab.id];if(!ctx?.pdfAttachment||m.noteId!==ctx.noteId)throw Error('PDF添付の接続がありません。');const note=(await chrome.storage.local.get(noteKey(ctx.noteId)))[noteKey(ctx.noteId)];if(!note||note.anchor.docId!==ctx.docId)throw Error('添付先のPDFが見つかりません。');return originalPDFChunk(ctx.docId,m.offset);}
  if(m.type==='STOP_CONTEXT') {await chrome.storage.session.remove('pm:context:'+sender.tab.id);return {ok:true};}
  if(m.type==='LIST_NOTE_TARGETS'&&chat){const data=await chrome.storage.local.get(null);return {notes:Object.entries(data).filter(([k])=>k.startsWith('pm:note:')).map(([,n])=>({id:n.id,docTitle:n.docTitle,page:n.anchor.page,title:n.title,excerpt:String(n.anchor.excerpt||'').slice(0,70),updatedAt:n.updatedAt})).sort((a,b)=>b.updatedAt-a.updatedAt)};}
  if(m.type==='CONNECT_EXISTING_NOTE'&&chat){const key=noteKey(m.noteId),n=(await chrome.storage.local.get(key))[key];if(!n)throw Error('接続先の注釈が見つかりません。');
@@ -39,11 +41,11 @@ async function handle(m,sender) {
    await chrome.storage.local.set({[key]:merged});}return {ok:true};});
  if(m.type==='BIND_CHAT'&&internal) {
   if(!validAnchor(m.note?.anchor)) throw Error('PDFの対象箇所を選択してください。');
-  const note=validateNote(m.note);await serial(()=>chrome.storage.local.set({[noteKey(note.id)]:note}));
+  const note=validateNote(m.note);const pdfAttachment=m.attachPDF===true?await originalPDFInfo(note.anchor.docId):null;await serial(()=>chrome.storage.local.set({[noteKey(note.id)]:note}));
   const b=m.bounds; if(b) await chrome.windows.update(sender.tab.windowId,{state:'normal',left:b.left,top:b.top,width:b.readerWidth,height:b.height});
   const win=await chrome.windows.create({url:'https://chatgpt.com/',type:'normal',...(b?{left:b.left+b.readerWidth,top:b.top,width:b.chatWidth,height:b.height}:{width:650,height:900})});
   const tabId=win.tabs[0].id;
-  const ctx={noteId:note.id,docTitle:note.docTitle,page:note.anchor.page,prompt:m.prompt,createdAt:Date.now()};
+  const ctx={noteId:note.id,docTitle:note.docTitle,page:note.anchor.page,prompt:m.prompt,createdAt:Date.now(),...(pdfAttachment?{docId:note.anchor.docId,pdfAttachment}:{})};
   await chrome.storage.session.set({['pm:context:'+tabId]:ctx});
   chrome.tabs.sendMessage(tabId,{type:'CONTEXT_READY',context:{...ctx,selectionImage:note.selectionImage||null}}).catch(()=>{});
   return {ok:true,tabId};

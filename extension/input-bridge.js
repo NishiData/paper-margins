@@ -36,17 +36,26 @@ globalThis.PaperMarginsInput=(()=>{
  }
  async function imageBlob(image){if(!image?.dataUrl?.startsWith('data:image/png;base64,'))throw Error('選択画像がありません。');return (await fetch(image.dataUrl)).blob();}
  async function copyImage(image){if(!globalThis.ClipboardItem||!navigator.clipboard?.write)throw Error('画像をコピーできません。「画像を保存」して添付してください。');const blob=await imageBlob(image);await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);}
- function attachmentShown(name){const editor=find();if(!editor)return false;const scope=editor.closest('form')||editor.closest('[data-testid*="composer"]')||editor.parentElement.parentElement;return !!scope&&(scope.textContent.includes(name)||Array.from(scope.querySelectorAll('[title],[aria-label],img[alt]')).some(e=>['title','aria-label','alt'].some(attr=>e.getAttribute(attr)?.includes(name))));}
- async function attachImage(image){
+ function attachmentShown(name){const editor=find();if(!editor)return false;const scope=editor.closest('form')||editor.closest('[data-testid*="composer"]')||editor.parentElement?.parentElement;if(!scope)return false;
+  // The question itself contains the PDF filename. Only inspect attachment UI,
+  // excluding the composer and the extension panel, to avoid a false success.
+  const outside=e=>e!==editor&&!editor.contains(e)&&!e.closest('textarea,[contenteditable],#paper-margins-bridge');
+  const walker=document.createTreeWalker(scope,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())if(outside(node.parentElement)&&node.textContent.includes(name))return true;
+  return Array.from(scope.querySelectorAll('[title],[aria-label],img[alt]')).some(e=>outside(e)&&['title','aria-label','alt'].some(attr=>e.getAttribute(attr)?.includes(name)));
+ }
+ function acceptsFile(input,file){const accept=input.accept.toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);return !accept.length||accept.some(type=>type==='*/*'||type==='*'||type.startsWith('.')&&file.name.toLowerCase().endsWith(type)||type===file.type.toLowerCase()||type.endsWith('/*')&&file.type.toLowerCase().startsWith(type.slice(0,-1)));}
+ async function attachFiles(files){
   const editor=find();if(!editor)return {ok:false,reason:'not-found'};
-  if(attachmentShown(image.name))return {ok:true};
-  const blob=await imageBlob(image),file=new File([blob],image.name,{type:'image/png'}),transfer=new DataTransfer();transfer.items.add(file);
-  const inputs=roots().flatMap(root=>Array.from(root.querySelectorAll('input[type="file"]'))).filter(e=>!e.disabled&&!e.webkitdirectory&&(!e.accept||/image|\.png|\*/i.test(e.accept)));
+  const pending=files.filter(file=>!attachmentShown(file.name));if(!pending.length)return {ok:true};
+  const inputs=roots().flatMap(root=>Array.from(root.querySelectorAll('input[type="file"]'))).filter(e=>!e.disabled&&!e.webkitdirectory&&pending.every(file=>acceptsFile(e,file))&&(pending.length===1||e.multiple));
   const form=editor.closest('form'),input=inputs.find(e=>form?.contains(e))||inputs[0];
+  if(!input&&pending.length>1){for(const file of pending){const r=await attachFiles([file]);if(!r.ok)return r;}return files.every(file=>attachmentShown(file.name))?{ok:true}:{ok:false,reason:'unconfirmed'};}
+  const transfer=new DataTransfer();for(const file of pending)transfer.items.add(file);
   if(input){input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true,composed:true}));}
   else{editor.focus({preventScroll:true});editor.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,composed:true,clipboardData:transfer}));}
-  for(let i=0;i<12;i++){await new Promise(r=>setTimeout(r,100));if(attachmentShown(image.name))return {ok:true};}
+  for(let i=0;i<20;i++){await new Promise(r=>setTimeout(r,100));if(files.every(file=>attachmentShown(file.name)))return {ok:true};}
   return {ok:false,reason:'unconfirmed'};
  }
- return {find,text,insert,attachImage,copyImage,imageBlob};
+ async function attachImage(image){const blob=await imageBlob(image);return attachFiles([new File([blob],image.name,{type:'image/png'})]);}
+ return {find,text,insert,attachImage,attachFiles,copyImage,imageBlob};
 })();
