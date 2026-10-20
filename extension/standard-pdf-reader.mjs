@@ -22,6 +22,15 @@ export class StandardPDFReader extends ContinuousPDFReader {
   setup(){
     const app=this.app,w=this.frame.contentWindow,d=w.document,bus=app.eventBus;
     this.container=app.pdfViewer.container;this.stack=app.pdfViewer.viewer;
+    const inkPanel=d.getElementById('editorInkParamsToolbar'),inkButton=d.getElementById('editorInkButton');
+    const close=d.createElement('button');close.type='button';close.className='pm-ink-close';close.textContent='閉じる ×';close.setAttribute('aria-label','ペン設定を閉じる');close.onclick=()=>this.setInkSettingsOpen(false);inkPanel.prepend(close);
+    // Keep the pen active when dismissing its settings, and let the icon reopen it.
+    inkButton.addEventListener('click',event=>{if(app.pdfViewer.annotationEditorMode!==15)return;event.preventDefault();event.stopImmediatePropagation();if(this.mode==='erase'){this.setMode('ink');this.onMode?.('ink');this.setInkSettingsOpen(true);}else this.setInkSettingsOpen(inkPanel.classList.contains('hidden'));},true);
+    const dismiss=event=>{if(!inkPanel.contains(event.target)&&!inkButton.contains(event.target))this.setInkSettingsOpen(false);};
+    d.addEventListener('pointerdown',dismiss,true);document.addEventListener('pointerdown',()=>this.setInkSettingsOpen(false),true);
+    const escape=event=>{if(event.key!=='Escape'||inkPanel.classList.contains('hidden'))return false;event.preventDefault();event.stopImmediatePropagation();this.setInkSettingsOpen(false);return true;};
+    document.addEventListener('keydown',escape,true);
+
     this.stack.addEventListener('mouseup',e=>this.selectText(e));
     d.addEventListener('pointerdown',e=>this.eraseAt(e).catch(this.onError),true);
     bus.on('pagechanging',({pageNumber})=>{this.currentPage=pageNumber;this.onPage(pageNumber);});
@@ -35,11 +44,15 @@ export class StandardPDFReader extends ContinuousPDFReader {
     w.addEventListener('pointerdown',()=>{this.pointerActive=true;},{capture:true});
     for(const name of ['keyup','input','change'])d.addEventListener(name,schedule,true);
     d.addEventListener('change',e=>{if(e.target.id!=='fileInput')return;e.stopImmediatePropagation();if(e.target.files[0])this.onFile?.(e.target.files[0]);},true);
-    d.addEventListener('keydown',e=>{if(e.key==='Escape')this.onEscape?.();});
+    d.addEventListener('keydown',e=>{if(escape(e))return;if(e.key==='Escape')this.onEscape?.();},true);
     // Never let the embedded viewer open a different document behind the shelf.
     d.addEventListener('drop',e=>{e.preventDefault();e.stopImmediatePropagation();if(e.dataTransfer?.files[0])this.onFile?.(e.dataTransfer.files[0]);},true);
     bus.on('documenterror',({message,reason})=>this.onError(Error(message||reason||'PDFを表示できませんでした。')));
     app.downloadOrSave=async()=>{await this.onDownload?.();};
+  }
+  setInkSettingsOpen(open){
+    if(!this.app)return;const d=this.frame.contentDocument,panel=d.getElementById('editorInkParamsToolbar');
+    panel.classList.toggle('hidden',!open);d.getElementById('editorInkButton').setAttribute('aria-expanded',String(open));
   }
   edited(){if(this.pdf&&!this.suppressEdits)this.onDirty?.();}
   async close(){
