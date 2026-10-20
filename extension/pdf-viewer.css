@@ -2,11 +2,11 @@
 .pdfViewer .page{border:0}
 .pdf-page{position:relative}
 .page-marks,.area-layer{position:absolute;inset:0;pointer-events:none;z-index:7}
-.mark{position:absolute;background:#e7c96566;border:1px solid #d4b14688;border-radius:2px;pointer-events:auto;cursor:pointer;padding:0;min-width:3px;min-height:3px}
-.mark:hover{background:#e7c96599}.mark.focused{background:#86baa577;border-color:#438868}
+.mark{position:absolute;background:#e7c9651a;border:1px solid #d4b14622;border-radius:2px;pointer-events:auto;cursor:pointer;padding:0;min-width:3px;min-height:3px}
+.mark:hover{background:#e7c96529}.mark.focused{background:#86baa51f;border-color:#43886833}
 .area-layer{display:none;cursor:crosshair;touch-action:none;pointer-events:auto;z-index:8}
 .area-mode .area-layer{display:block}.area-mode .textLayer{pointer-events:none}
-.draft-mark{position:absolute;z-index:9;pointer-events:none;background:#659d8950;border:2px solid #46846b;display:none}
+.draft-mark{position:absolute;z-index:9;pointer-events:none;background:#659d891f;border:2px solid #46846b66;display:none}
 .edit-mode .page-marks{display:none}
 /* PDF selection is managed by the shelf so that the document and Q&A stay bound. */
 #secondaryOpenFile,#viewsManagerAddFileButton,#imageAltTextSettings,#imageAltTextSettingsSeparator{display:none!important}
@@ -20,3 +20,7 @@ body{font-family:system-ui,"Noto Sans JP",sans-serif}#toolbarContainer,#secondar
 .erase-mode .inkEditor{pointer-events:auto!important}
 .erase-mode .inkEditor:hover{outline:2px dashed #cb6256;outline-offset:3px}
 .erase-mode .inkEditor .resizers,.erase-mode .editToolbar{display:none!important}
+
+/* Keep the PDF glyphs legible when browser selection and saved marks overlap. */
+.textLayer ::selection{background:rgb(65 130 100 / .10)}
+.textLayer br::selection{background:transparent}

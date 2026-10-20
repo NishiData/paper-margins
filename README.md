@@ -1,6 +1,6 @@
 # Paper Margins — 論文の余白に、理解を残す
 
-PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.3.1** です。
+PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.3.2** です。
 
 **このプロジェクトの独自コード、UI、READMEおよびドキュメントは、ユーザーの指示に基づいてGPT（ChatGPT / Codex）が作成・修正しました。** PDF.js、KaTeXなどの同梱ライブラリは、それぞれの開発者による成果物です。
 
@@ -153,12 +153,12 @@ npm run test:browser
 python scripts/package.py
 ```
 
-`dist/paper-margins-v1.3.1.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
+`dist/paper-margins-v1.3.2.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
 
 ## ライセンス・作成者表記
 
 本リポジトリの独自コードは[MIT License](LICENSE)です。GPT（ChatGPT / Codex）がユーザーの指示に基づいて生成・修正したプロジェクトです。
 
-同梱のPDF.js 5.6.205（Apache-2.0）、KaTeX 0.16.22（MIT）、pdf-lib 1.17.1（MIT）、Noto Sans JP（SIL OFL 1.1）、@pdf-lib/fontkit 1.3.1（MIT）、DejaVu Sans 2.37（同梱のフォントライセンス）は、それぞれのライセンスが適用されます。ライセンス文書は `extension/vendor/` に残しています。
+同梱のPDF.js 5.6.205（Apache-2.0）、KaTeX 0.16.22（MIT）、pdf-lib 1.17.1（MIT）、Noto Sans JP（SIL OFL 1.1）、@pdf-lib/fontkit 1.3.2（MIT）、DejaVu Sans 2.37（同梱のフォントライセンス）は、それぞれのライセンスが適用されます。ライセンス文書は `extension/vendor/` に残しています。
 
 詳しい操作は[ユーザーガイド](docs/USER_GUIDE.md)、更新内容は[変更履歴](docs/CHANGELOG.md)を参照してください。
