@@ -17,6 +17,20 @@ async function main(){fs.mkdirSync(path.resolve('artifacts'),{recursive:true});a
  await page.locator('#question').fill('短完全列が分裂するとは？');await page.locator('#manual-add').click();await page.locator('#manual-answer').fill('群準同型の切断が存在することです。\n\\[S \\cong \\Lambda \\rtimes P\\]\n例えば <script>alert(1)</script> はテキストとして保存されます。');await page.locator('#save-manual').click();await page.waitForSelector('.note-card');assert.equal(await pdf.locator('.mark').count(),1);assert.equal(await page.locator('.answer .katex').count(),1);assert.equal(await page.locator('.answer script').count(),0);
  const before=await pdf.locator('.mark').evaluate(n=>n.style.left);await page.locator('#zoom-in').click();await page.waitForTimeout(500);assert.equal(await pdf.locator('.mark').evaluate(n=>n.style.left),before);
  await page.locator('.tags').fill('群論, 要復習');await page.locator('.tags').dispatchEvent('change');await page.waitForTimeout(250);await page.locator('#search').fill('要復習');assert.equal(await page.locator('.note-card').count(),1);await page.locator('#search').fill('not-a-note');assert.equal(await page.locator('.note-card').count(),0);await page.locator('#search').fill('');
+ // A mark opens its note without jumping to the page head, even when zoomed/scrolled.
+ await pdf.locator('body').evaluate(()=>{PDFViewerApplication.pdfViewer.currentScale=2.5;});await page.waitForTimeout(300);
+ await pdf.locator('.mark').evaluate(e=>e.scrollIntoView({block:'center'}));await page.waitForTimeout(200);
+ const scrollBefore=await pdf.locator('body').evaluate(()=>({top:PDFViewerApplication.pdfViewer.container.scrollTop,left:PDFViewerApplication.pdfViewer.container.scrollLeft,scale:PDFViewerApplication.pdfViewer.currentScale}));
+ assert.ok(scrollBefore.top>50);await pdf.locator('.mark').click();await page.waitForTimeout(300);
+ const scrollAfter=await pdf.locator('body').evaluate(()=>({top:PDFViewerApplication.pdfViewer.container.scrollTop,left:PDFViewerApplication.pdfViewer.container.scrollLeft,scale:PDFViewerApplication.pdfViewer.currentScale}));
+ assert.ok(Math.abs(scrollAfter.top-scrollBefore.top)<=2,JSON.stringify({scrollBefore,scrollAfter}));assert.equal(scrollAfter.left,scrollBefore.left);assert.equal(scrollAfter.scale,scrollBefore.scale);
+ assert.ok(await page.locator('.note-card.selected').isVisible());
+ // Opening from the list returns to the actual mark, rather than the page head.
+ await pdf.locator('body').evaluate(()=>PDFViewerApplication.pdfViewer.scrollPageIntoView({pageNumber:3}));
+ await page.locator('.note-heading button').click();await page.waitForTimeout(300);
+ const target=await pdf.locator('.mark').evaluate(e=>{const b=e.getBoundingClientRect(),c=PDFViewerApplication.pdfViewer.container.getBoundingClientRect();return {y:b.top-c.top,bottom:b.bottom-c.top,height:c.height,top:PDFViewerApplication.pdfViewer.container.scrollTop};});
+ assert.ok(target.y>=0&&target.bottom<=target.height,JSON.stringify(target));assert.ok(target.top>50);assert.equal(await pdf.locator('body').evaluate(()=>PDFViewerApplication.pdfViewer.currentScale),scrollBefore.scale);
+ await pdf.locator('body').evaluate(()=>{PDFViewerApplication.pdfViewer.currentScaleValue='page-width';});
  // Regression: docked notes never overlap the PDF, including zoom and narrow reading windows.
  for(const width of [1888,980,700,500])for(const compact of [false,true]){
   await page.setViewportSize({width,height:1000});await page.evaluate(value=>{document.body.classList.toggle('compact',value);},compact);

@@ -96,6 +96,16 @@ export class StandardPDFReader extends ContinuousPDFReader {
   updateCurrentPage(){}
   clear(){this.views.clear();this.notes=[];this.pdf=null;this.ready=false;}
   async jump(n){if(!this.pdf)return;this.app.pdfViewer.scrollPageIntoView({pageNumber:Math.max(1,Math.min(this.pdf.numPages,n))});this.syncViews();}
+  async jumpToAnchor(anchor){
+    if(!this.pdf)return;
+    // Let the docked notes panel finish resizing the viewer before locating the mark.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    this.syncViews();const v=this.views.get(anchor.page),r=v&&this.rects({anchor},v)?.[0];
+    if(!r){await this.jump(anchor.page);return;}
+    const [x,y]=v.viewport.convertToPdfPoint(Math.max(0,r.x*v.viewport.width-20),Math.max(0,r.y*v.viewport.height-40));
+    this.app.pdfViewer.scrollPageIntoView({pageNumber:anchor.page,destArray:[null,{name:'XYZ'},x,y,null],ignoreDestinationZoom:true});
+    this.syncViews();
+  }
   setMode(mode){
     this.mode=mode;if(!this.app)return;
     this.stack.classList.toggle('area-mode',mode==='area');this.stack.classList.toggle('edit-mode',mode==='ink'||mode==='edit'||mode==='erase');
@@ -134,7 +144,7 @@ export class StandardPDFReader extends ContinuousPDFReader {
   drawMarks(){
     for(const v of this.views.values())v.marks?.replaceChildren();
     for(const note of this.notes||[]){const v=this.views.get(note.anchor.page);if(!v?.marks)continue;
-      for(const r of this.rects(note,v)){const b=v.element.ownerDocument.createElement('button');b.className='mark'+(this.selected===note.id?' focused':'');Object.assign(b.style,{left:r.x*100+'%',top:r.y*100+'%',width:r.w*100+'%',height:r.h*100+'%'});b.title=note.title;b.setAttribute('aria-label',note.title);b.onclick=()=>Promise.resolve(this.onNote(note)).catch(this.onError);v.marks.append(b);}
+      for(const r of this.rects(note,v)){const b=v.element.ownerDocument.createElement('button');b.className='mark'+(this.selected===note.id?' focused':'');Object.assign(b.style,{left:r.x*100+'%',top:r.y*100+'%',width:r.w*100+'%',height:r.h*100+'%'});b.title=note.title;b.setAttribute('aria-label',note.title);b.onclick=()=>Promise.resolve(this.onNote(note,{navigate:false})).catch(this.onError);v.marks.append(b);}
     }
   }
   selectText(event){
