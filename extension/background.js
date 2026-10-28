@@ -1,3 +1,4 @@
+import {validateNoteImages} from './note-images.mjs';
 import {originalPDFInfo,originalPDFChunk} from './pdf-attachment.mjs';
 import {noteKey, validAnchor, mergeTurn,validateNote,makePrompt} from './core.mjs';
 chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}).catch(console.error);
@@ -30,6 +31,10 @@ async function handle(m,sender) {
   const key=noteKey(m.id),current=(await chrome.storage.local.get(key))[key];if(!current)throw Error('注釈が見つかりません。');
   const tags=Array.isArray(m.tags)?m.tags.map(String).slice(0,30):current.tags;
   await chrome.storage.local.set({[key]:{...current,tags,updatedAt:Date.now()}});return {ok:true};});
+ if((m.type==='ADD_NOTE_IMAGES'||m.type==='REMOVE_NOTE_IMAGE')&&internal)return serial(async()=>{
+  const key=noteKey(m.id),current=(await chrome.storage.local.get(key))[key];if(!current)throw Error('注釈が見つかりません。');
+  const attachments=m.type==='ADD_NOTE_IMAGES'?validateNoteImages([...(current.attachments||[]),...validateNoteImages(m.images)]):validateNoteImages((current.attachments||[]).filter(image=>image.id!==m.imageId));
+  await chrome.storage.local.set({[key]:{...current,attachments,updatedAt:Date.now()}});return {ok:true};});
  if(m.type==='ADD_MANUAL_TURN'&&internal) return serial(async()=>{
   const key=noteKey(m.note.id),current=(await chrome.storage.local.get(key))[key]||validateNote(m.note);
   const updated=validateNote(mergeTurn(current,m.turn));if(!current.turns.length)updated.title=m.turn.question.slice(0,90);
@@ -37,6 +42,7 @@ async function handle(m,sender) {
  if(m.type==='DELETE_NOTE'&&internal) return serial(async()=>{await chrome.storage.local.remove(noteKey(m.id));return {ok:true};});
  if(m.type==='IMPORT_NOTES'&&internal) return serial(async()=>{
   const incoming=m.notes.map(validateNote);for(const n of incoming){const key=noteKey(n.id),old=(await chrome.storage.local.get(key))[key];let merged=old||n;
+   if(old&&n.attachments?.length){const images=new Map((old.attachments||[]).map(image=>[image.id,image]));for(const image of n.attachments)if(!images.has(image.id))images.set(image.id,image);merged={...merged,attachments:validateNoteImages([...images.values()])};}
    if(old)for(const t of n.turns)if(!merged.turns.some(x=>x.id===t.id))merged=mergeTurn(merged,t);
    await chrome.storage.local.set({[key]:merged});}return {ok:true};});
  if(m.type==='BIND_CHAT'&&internal) {

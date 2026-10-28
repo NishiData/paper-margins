@@ -8,3 +8,5 @@ test('復元時に不正な座標と会話データを拒否する',()=>{const n
 test('引用とページ・参照範囲を質問に含める',()=>{const p=makePrompt('paper.pdf',anchor,'分裂するとは？');assert.ok(p.includes('PDF 3ページ'));assert.ok(p.includes(anchor.excerpt));assert.ok(p.includes('分裂するとは？'));assert.ok(p.includes('論文全体を確認できない場合'));});
 
 test('数式の範囲選択は過去の文字化けした引用も質問に使わない',()=>{const p=makePrompt('math.pdf',{...anchor,kind:'area',excerpt:'■□\uFFFD\uE000'},'Explain');assert.ok(p.includes('選択画像'));for(const c of ['■','□','\uFFFD','\uE000'])assert.ok(!p.includes(c));});
+
+test('添付画像を保持し、不正形式・重複・枚数超過を拒否する',()=>{const image={id:'i',name:'diagram.png',dataUrl:'data:image/png;base64,AA=='};const n={id:'n',anchor,turns:[],attachments:[image]};assert.deepEqual(validateNote(n).attachments,[image]);assert.throws(()=>validateNote({...n,attachments:[{...image,dataUrl:'javascript:alert(1)'}]}));assert.throws(()=>validateNote({...n,attachments:[image,image]}));assert.throws(()=>validateNote({...n,attachments:Array.from({length:11},(_,i)=>({...image,id:String(i)}))}));});

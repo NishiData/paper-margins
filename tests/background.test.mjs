@@ -24,3 +24,13 @@ assert.deepEqual(opened,[{url:'chrome-extension://test/reader.html?paper='+'b'.r
 assert.ok((await request({type:'OPEN_PAPER_TAB',docId:'../bad'},internal)).error);
 assert.ok((await request({type:'OPEN_PAPER_TAB',docId:'c'.repeat(64)},sender)).error);
 assert.equal(opened.length,1);
+
+const image={id:'img-1',name:'diagram.png',dataUrl:'data:image/png;base64,AA=='};
+session['pm:context:2']={noteId:'n'};
+const imageWrites=await Promise.all([request({type:'ADD_NOTE_IMAGES',id:'n',images:[image]},internal),request({type:'SAVE_TURN',turn:{id:'t4',question:'Q4',answer:'A4'}}),request({type:'EDIT_NOTE',id:'n',tags:['添付']},internal)]);
+assert.ok(imageWrites.every(r=>r.ok));assert.equal(local['pm:note:n'].attachments.length,1);assert.ok(local['pm:note:n'].turns.some(t=>t.id==='t4'));
+assert.ok((await request({type:'REMOVE_NOTE_IMAGE',id:'n',imageId:image.id},sender)).error);
+assert.ok((await request({type:'ADD_NOTE_IMAGES',id:'n',images:[{...image,id:'bad',dataUrl:'data:text/html;base64,AA=='}]},internal)).error);
+const snapshot=structuredClone(local['pm:note:n']);await request({type:'REMOVE_NOTE_IMAGE',id:'n',imageId:image.id},internal);assert.equal(local['pm:note:n'].attachments.length,0);assert.equal(local['pm:note:n'].turns.length,snapshot.turns.length);
+await request({type:'IMPORT_NOTES',notes:[snapshot]},internal);assert.equal(local['pm:note:n'].attachments.length,1);await request({type:'IMPORT_NOTES',notes:[snapshot]},internal);assert.equal(local['pm:note:n'].attachments.length,1);
+console.log('PASS: atomic image/answer/tag updates; attachments survive import, deduplicate and remove individually; unauthorized and invalid image updates rejected.');

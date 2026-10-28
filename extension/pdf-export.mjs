@@ -74,6 +74,9 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   lines(`元のPDF ${n.anchor.page} ページ / 見出しをクリックすると元の箇所へ戻ります。`,8.5,muted,14);
   if(n.tags?.length)lines('タグ：'+n.tags.join(' / '),8.5,muted,14);
   if(n.selectionImage){const image=await out.embedPng(n.selectionImage.dataUrl),scale=Math.min(WIDTH/image.width,115/image.height,1);const iw=image.width*scale,ih=image.height*scale;space(ih+18);page.drawImage(image,{x:M,y:y-ih-7,width:iw,height:ih});y-=ih+18;}
+  for(const attachment of n.attachments||[]){
+   const image=await out.embedPng(attachment.dataUrl),scale=Math.min(WIDTH/image.width,330/image.height,1),iw=image.width*scale,ih=image.height*scale;space(ih+48);label('添付画像：'+attachment.name);page.drawImage(image,{x:M,y:y-ih-7,width:iw,height:ih});y-=ih+18;
+  }
   if(!n.turns.length){label('質問');lines(n.title||'（質問なし）');label('回答');lines('回答はまだ保存されていません。');}
   for(let j=0;j<n.turns.length;j++){
    label(`質問 ${j+1}`);lines(n.turns[j].question);label(`回答 ${j+1}`);lines(n.turns[j].answer||'（空の回答）');

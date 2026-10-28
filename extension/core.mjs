@@ -1,3 +1,4 @@
+import {validateNoteImages} from './note-images.mjs';
 export const noteKey = id => 'pm:note:' + id;
 export function clamp(n, a=0, b=1) { return Math.min(b, Math.max(a, n)); }
 export function normalizeRect(r, bounds) {
@@ -12,7 +13,7 @@ export function validateNote(n) {
   if(!n || typeof n.id!=='string' || n.id.length>100 || !validAnchor(n.anchor) || !Array.isArray(n.turns) || n.turns.length>1000) throw Error('注釈データの形式を確認してください。');
   for(const t of n.turns) if(typeof t.id!=='string'||typeof t.question!=='string'||typeof t.answer!=='string'||t.question.length>500000||t.answer.length>1000000) throw Error('会話データの形式が不正です。');
   if(n.selectionImage&&(!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(n.selectionImage.dataUrl)||n.selectionImage.dataUrl.length>9000000||typeof n.selectionImage.name!=='string'))throw Error('選択画像の形式を確認してください。');
-  return {id:n.id,anchor:{...n.anchor,excerpt:String(n.anchor.excerpt||'').slice(0,50000)},title:String(n.title||'注釈').slice(0,300),docTitle:String(n.docTitle||'PDF').slice(0,300),tags:Array.isArray(n.tags)?n.tags.map(String).slice(0,30):[],turns:n.turns,createdAt:Number(n.createdAt)||Date.now(),updatedAt:Number(n.updatedAt)||Date.now(),...(n.selectionImage?{selectionImage:{dataUrl:n.selectionImage.dataUrl,name:n.selectionImage.name.replace(/[\\/:*?"<>|]/g,'_').slice(0,200)}}:{})};
+  return {...(n.attachments?{attachments:validateNoteImages(n.attachments)}:{}),id:n.id,anchor:{...n.anchor,excerpt:String(n.anchor.excerpt||'').slice(0,50000)},title:String(n.title||'注釈').slice(0,300),docTitle:String(n.docTitle||'PDF').slice(0,300),tags:Array.isArray(n.tags)?n.tags.map(String).slice(0,30):[],turns:n.turns,createdAt:Number(n.createdAt)||Date.now(),updatedAt:Number(n.updatedAt)||Date.now(),...(n.selectionImage?{selectionImage:{dataUrl:n.selectionImage.dataUrl,name:n.selectionImage.name.replace(/[\\/:*?"<>|]/g,'_').slice(0,200)}}:{})};
 }
 export function mergeTurn(note, turn) {
   const turns=note.turns.slice(); const i=turns.findIndex(t=>t.id===turn.id);

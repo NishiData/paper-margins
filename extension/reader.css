@@ -80,3 +80,5 @@ body.shelf-hidden{--shelf-width:0px}body.shelf-hidden .shelf{display:none}
  body.shelf-open{--shelf-width:140px}body .app{grid-template-columns:var(--shelf-width) minmax(0,1fr)!important}
  body.show-notes .notes{grid-column:1/-1;grid-row:2}
 }
+
+.note-images figure{margin:10px 0;padding:7px;border:1px solid var(--line);border-radius:6px}.note-images img{display:block;width:100%;max-height:280px;object-fit:contain;background:white}.note-images figcaption{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-top:5px}.note-images a{font-size:10px;color:var(--green);overflow-wrap:anywhere;min-width:0}.note-images button{font-size:10px;padding:3px 6px}.note-images figcaption button{flex-shrink:0}
