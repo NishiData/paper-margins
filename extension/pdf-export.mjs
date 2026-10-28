@@ -1,5 +1,6 @@
+import {splitMath} from './export-math.mjs';
 // Visible Q&A pages are part of the PDF itself, independent of a viewer's popups.
-export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBytes, title='PDF', onProgress=()=>{}}){
+export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBytes, title='PDF', onProgress=()=>{}, renderMath}){
  const {PDFDocument,PDFName,PDFArray,PDFHexString,rgb}=PDFLib;
  const out=await PDFDocument.load(source),original=out.getPages();
  if(!notes.length)throw Error('この論文にはまだ注釈がありません。');
@@ -49,6 +50,31 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
    if(buffer.length)emit(buffer);
   }
  }
+ const mathCache=new Map();
+ async function math(tex,display,size){
+  if(!renderMath)throw Error('PDF出力用の数式描画処理がありません。');
+  const key=JSON.stringify([tex,display,size]);if(!mathCache.has(key))mathCache.set(key,(async()=>{const result=await renderMath(tex,{display,size,maxWidth:WIDTH});return {...result,image:await out.embedPng(result.dataUrl)};})());return mathCache.get(key);
+ }
+ async function richLines(text,size=bodySize,color=ink,lineHeight=leading){
+  let runs=[],used=0;
+  function emit(){
+   if(!runs.length)return;
+   const ascent=Math.max(size,...runs.map(r=>r.math?r.height-r.depth:0)),descent=Math.max(3,...runs.map(r=>r.math?r.depth:0)),height=Math.max(lineHeight,ascent+descent+5);
+   space(height);const baseline=y-Math.max(0,ascent-size);let x=M;
+   for(const run of runs){if(run.math)page.drawImage(run.image,{x,y:baseline-run.depth,width:run.width,height:run.height});else draw(run.text,x,baseline,size,color);x+=run.width;}y-=height;runs=[];used=0;
+  }
+  for(const part of splitMath(text)){
+   if(part.math!==undefined){
+    const image=await math(part.math,part.display,size);
+    if(part.display){emit();space(image.height+18);page.drawImage(image.image,{x:M+(WIDTH-image.width)/2,y:y-image.height-5,width:image.width,height:image.height});y-=image.height+18;}
+    else{if(used+image.width>WIDTH)emit();runs.push({...image,math:true});used+=image.width;}
+   }else for(const token of part.text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').match(/\n|[^\S\n]+|[A-Za-z0-9_]+|./gu)||[]){
+    if(token==='\n'){if(runs.length)emit();else{space(lineHeight*.6);y-=lineHeight*.6;}continue;}
+    for(const char of token){const w=width([glyph(char)],size);if(used+w>WIDTH)emit();const last=runs.at(-1);if(last&&!last.math){last.text+=char;last.width+=w;}else runs.push({text:char,width:w});used+=w;}
+   }
+  }
+  emit();
+ }
  function label(text){space(42);y-=8;draw(text,M,y,11,green);y-=22;}
  function sourceRects(n,target){
   if(n.anchor.pdfRects?.length)return n.anchor.pdfRects.map(r=>[Math.min(r[0],r[2]),Math.min(r[1],r[3]),Math.max(r[0],r[2]),Math.max(r[1],r[3])]);
@@ -68,7 +94,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
  newPage();lines(title,9,muted,14);lines(`注釈 ${ordered.length} 件。本文の緑の番号から各注釈へ移動できます。`,9,muted,14);lines('リンクが使えない場合も、末尾のこのページから全文を読めます。',9,muted,14);y-=10;
  for(let i=0;i<ordered.length;i++){
   const n=ordered[i],number=i+1;currentNumber=number;space(130);y-=8;
-  const first=page,top=y+14;lines(`[${number}] ${n.title||'注釈'}`,13,green,21);
+  const first=page,top=y+14;await richLines(`[${number}] ${n.title||'注釈'}`,13,green,21);
   const sourcePage=original[n.anchor.page-1],r=sourceRects(n,sourcePage)[0];
   link(first,[M,top-22,W-M,top],[sourcePage.ref,PDFName.of('XYZ'),r[0],r[3]+30,null]);
   lines(`元のPDF ${n.anchor.page} ページ / 見出しをクリックすると元の箇所へ戻ります。`,8.5,muted,14);
@@ -77,9 +103,9 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   for(const attachment of n.attachments||[]){
    const image=await out.embedPng(attachment.dataUrl),scale=Math.min(WIDTH/image.width,330/image.height,1),iw=image.width*scale,ih=image.height*scale;space(ih+48);label('添付画像：'+attachment.name);page.drawImage(image,{x:M,y:y-ih-7,width:iw,height:ih});y-=ih+18;
   }
-  if(!n.turns.length){label('質問');lines(n.title||'（質問なし）');label('回答');lines('回答はまだ保存されていません。');}
+  if(!n.turns.length){label('質問');await richLines(n.title||'（質問なし）');label('回答');lines('回答はまだ保存されていません。');}
   for(let j=0;j<n.turns.length;j++){
-   label(`質問 ${j+1}`);lines(n.turns[j].question);label(`回答 ${j+1}`);lines(n.turns[j].answer||'（空の回答）');
+   label(`質問 ${j+1}`);await richLines(n.turns[j].question);label(`回答 ${j+1}`);await richLines(n.turns[j].answer||'（空の回答）');
   }
   if(n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)){label('選択箇所');lines(n.anchor.excerpt,9,muted,15);}
   space(23);y-=10;page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:rgb(.82,.86,.82)});y-=15;

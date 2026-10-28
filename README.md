@@ -1,6 +1,6 @@
 # Paper Margins — 論文の余白に、理解を残す
 
-PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.4.0** です。
+PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.4.1** です。
 
 **このプロジェクトの独自コード、UI、READMEおよびドキュメントは、ユーザーの指示に基づいてGPT（ChatGPT / Codex）が作成・修正しました。** PDF.js、KaTeXなどの同梱ライブラリは、それぞれの開発者による成果物です。
 
@@ -93,7 +93,7 @@ Chrome拡張のPDF Viewerそのものを呼び出すのではなく、同じPDF.
 
 本文の番号をクリックすると対応する注釈へ移動し、注釈の見出しをクリックすると元のページへ戻れます。リンク非対応のPDFビューアーでも、末尾のページへ移動して内容を読めます。以前に書き出したPDFは変わらないため、更新後に再度書き出してください。
 
-付録ではMarkdown・LaTeXを保存された文字列として掲載します。拡張機能の画面内のような数式の組版ではありません。フォントにない特殊文字は `[U+XXXX]` 表記で残し、元の文字列はコメントにも保持します。
+付録の質問・回答・注釈見出しでは、LaTeXのインライン数式と独立した数式を組版して掲載します。数式はローカルのMathJaxで描画し、高解像度画像としてPDFへ埋め込みます。Markdownの見出し・強調・コードブロックは文字列として掲載します。フォントにない特殊文字は `[U+XXXX]` 表記で残し、元の文字列はコメントにも保持します。
 
 ## データ・権限
 
@@ -155,12 +155,12 @@ npm run test:browser
 python scripts/package.py
 ```
 
-`dist/paper-margins-v1.4.0.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
+`dist/paper-margins-v1.4.1.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
 
 ## ライセンス・作成者表記
 
 本リポジトリの独自コードは[MIT License](LICENSE)です。GPT（ChatGPT / Codex）がユーザーの指示に基づいて生成・修正したプロジェクトです。
 
-同梱のPDF.js 5.6.205（Apache-2.0）、KaTeX 0.16.22（MIT）、pdf-lib 1.17.1（MIT）、Noto Sans JP（SIL OFL 1.1）、@pdf-lib/fontkit 1.1.1（MIT）、DejaVu Sans 2.37（同梱のフォントライセンス）は、それぞれのライセンスが適用されます。ライセンス文書は `extension/vendor/` に残しています。
+同梱のMathJax 3.2.2（Apache-2.0）、PDF.js 5.6.205（Apache-2.0）、KaTeX 0.16.22（MIT）、pdf-lib 1.17.1（MIT）、Noto Sans JP（SIL OFL 1.1）、@pdf-lib/fontkit 1.1.1（MIT）、DejaVu Sans 2.37（同梱のフォントライセンス）は、それぞれのライセンスが適用されます。ライセンス文書は `extension/vendor/` に残しています。
 
 詳しい操作は[ユーザーガイド](docs/USER_GUIDE.md)、更新内容は[変更履歴](docs/CHANGELOG.md)を参照してください。

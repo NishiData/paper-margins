@@ -1,3 +1,4 @@
+import {renderExportMath} from './export-math.mjs';
 import {readNoteImages} from './note-images.mjs';
 import {noteKey,validateNote,mergeTurn,makePrompt} from './core.mjs';
 import {StandardPDFReader} from './standard-pdf-reader.mjs';
@@ -92,7 +93,7 @@ bind('backup',async()=>{await editSession?.flush();status('バックアップを
 bind('restore',()=>$('restore-input').click());bind('restore-input',async e=>{const f=e.target.files[0];if(!f)return;const b=JSON.parse(await f.text());if(b.format!=='paper-margins'||b.version!==1||!Array.isArray(b.notes)||!Array.isArray(b.papers))throw Error('Paper Marginsのバックアップを選んでください。');const ns=b.notes.map(validateNote),ps=[];for(const d of b.papers){if(typeof d.pdf!=='string'||typeof d.name!=='string')throw Error('PDFデータが不正です。');const bytes=Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0));const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');if(hash!==d.id)throw Error('PDFデータの整合性を確認できません。');if(d.editedPdf!==undefined&&(typeof d.editedPdf!=='string'||!atob(d.editedPdf).slice(0,1024).includes('%PDF-')))throw Error('書き込み付きPDFデータが不正です。');ps.push({...d,pdf:undefined,editedPdf:undefined,blob:new Blob([bytes],{type:'application/pdf'}),...(d.editedPdf?{editedBlob:new Blob([Uint8Array.from(atob(d.editedPdf),c=>c.charCodeAt(0))],{type:'application/pdf'})}:{})});}for(const d of ps)await store('put',d);await send({type:'IMPORT_NOTES',notes:ns});e.target.value='';await refreshShelf();await refreshNotes();status(`${ns.length}件の注釈を復元しました。`);},'change');
 async function exportPDF(){if(!doc)return;const button=$('export-pdf');button.disabled=true;try{
  await editSession?.flush();await refreshNotes();status('書き込みと会話の全文をPDFへ書き出しています…');const source=await reader.bytes();
- const bytes=notes.length?await exportAnnotatedPDF(source,notes,{PDFLib,fontkit:window.fontkit,fontBytes:await loadExportFonts(),title:doc.name,onProgress:(done,total)=>status(`注釈と会話を書き出しています… ${done} / ${total}`)}):source;
+ const bytes=notes.length?await exportAnnotatedPDF(source,notes,{PDFLib,fontkit:window.fontkit,fontBytes:await loadExportFonts(),title:doc.name,renderMath:renderExportMath,onProgress:(done,total)=>status(`注釈と会話を書き出しています… ${done} / ${total}`)}):source;
  download(bytes,doc.name.replace(/\.pdf$/i,'')+'-annotated.pdf','application/pdf');status(notes.length?'書き込みと質問・回答の全文を出力しました。本文の緑の番号から会話へ移動できます。':'書き込みを含むPDFを出力しました。');
  }finally{button.disabled=false;}}
 bind('export-pdf',exportPDF);
