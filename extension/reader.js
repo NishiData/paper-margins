@@ -11,6 +11,12 @@ async function savePaperEdits(d,bytes){const expected=d.editVersion||0;const sav
 function status(t){$('status').textContent=t;}
 function notesVisible(){return getComputedStyle($('notes-panel')).display!=='none';}
 function setNotesOpen(open){document.body.classList.toggle('show-notes',open);document.body.classList.toggle('notes-hidden',!open);$('toggle-notes').setAttribute('aria-expanded',String(open));}
+function syncShelfButton(){const open=getComputedStyle($('papers-panel')).display!=='none';$('toggle-shelf').setAttribute('aria-expanded',String(open));}
+function setShelfOpen(open){document.body.classList.toggle('shelf-open',open);document.body.classList.toggle('shelf-hidden',!open);try{localStorage.setItem('pm:shelf-open',String(open));}catch{}syncShelfButton();}
+try{const saved=localStorage.getItem('pm:shelf-open');if(saved!==null)setShelfOpen(saved==='true');}catch{}
+syncShelfButton();window.addEventListener('resize',syncShelfButton);
+bind('toggle-shelf',()=>setShelfOpen(getComputedStyle($('papers-panel')).display==='none'));
+bind('close-shelf',()=>{setShelfOpen(false);$('toggle-shelf').focus();});
 function closeNotes(){setNotesOpen(false);$('toggle-notes').focus();}
 
 async function send(m){const r=await chrome.runtime.sendMessage(m);if(r?.error)throw Error(r.error);return r;}
@@ -60,7 +66,7 @@ async function selectNote(n,{navigate=true}={}){selected=n.id;anchor=n.anchor;re
 function newNote(){return {id:crypto.randomUUID(),anchor,docTitle:doc.name,title:$('question').value.trim().slice(0,90)||anchor.excerpt?.slice(0,70)||`P. ${anchor.page}の注釈`,tags:[],turns:[],createdAt:Date.now(),updatedAt:Date.now()};}
 bind('ask',async()=>{if(!anchor)throw Error('PDFの対象箇所を選んでください。');const question=$('question').value.trim();if(!question){$('question').focus();throw Error('質問を入力してください。');}
  const note=newNote(),attachPDF=$('attach-pdf').checked;if(note.anchor.kind==='area'){status('選択画像を作成しています…');note.selectionImage=await selectionImage(note.anchor);}if(doc?.id!==note.anchor.docId)throw Error('PDFが切り替わりました。対象箇所を選び直してください。');const width=screen.availWidth,left=screen.availLeft||0,top=screen.availTop||0,height=screen.availHeight;const rw=Math.round(width*.55);const bounds=width>=1100?{left,top,height,readerWidth:rw,chatWidth:width-rw}:null;
- const res=await chrome.runtime.sendMessage({type:'BIND_CHAT',note,prompt:makePrompt(note.docTitle,note.anchor,question)+(attachPDF?'\n\n元のPDF本体も添付します。前後の定義・議論は添付PDFを参照してください。PDFを確認できない場合は推測せず、その点を明示してください。':''),attachPDF,bounds});if(res?.error)throw Error(res.error);selected=note.id;$('attach-pdf').checked=false;$('selection-panel').hidden=true;document.body.classList.add('compact');setNotesOpen(false);await refreshNotes();await renderPage();status('ChatGPTで質問を確認して送信してください。');});
+ const res=await chrome.runtime.sendMessage({type:'BIND_CHAT',note,prompt:makePrompt(note.docTitle,note.anchor,question)+(attachPDF?'\n\n元のPDF本体も添付します。前後の定義・議論は添付PDFを参照してください。PDFを確認できない場合は推測せず、その点を明示してください。':''),attachPDF,bounds});if(res?.error)throw Error(res.error);selected=note.id;$('attach-pdf').checked=false;$('selection-panel').hidden=true;document.body.classList.add('compact');syncShelfButton();setNotesOpen(false);await refreshNotes();await renderPage();status('ChatGPTで質問を確認して送信してください。');});
 function openManual(){if(!anchor){status('PDFの対象箇所を選んでください。');return;}$('manual-question').value=$('question').value;$('manual-answer').value='';$('manual-dialog').showModal();}
 bind('manual-add',openManual);bind('cancel-manual',()=>$('manual-dialog').close());bind('save-manual',async()=>{const q=$('manual-question').value.trim(),a=$('manual-answer').value.trim();if(!q||!a)throw Error('質問と回答を入力してください。');const key=selected?noteKey(selected):null;const n=key?(await chrome.storage.local.get(key))[key]:newNote();if(!n)throw Error('注釈が見つかりません。');if(n.anchor.kind==='area'&&!n.selectionImage)n.selectionImage=await selectionImage(n.anchor);n.title=n.turns.length?n.title:q.slice(0,90);const updated=mergeTurn(n,{id:crypto.randomUUID(),question:q,answer:a,createdAt:Date.now(),url:''});await send({type:'ADD_MANUAL_TURN',note:n,turn:updated.turns.at(-1)});selected=n.id;$('manual-dialog').close();await refreshNotes();status('注釈を保存しました。');});
 bind('crop-download',async()=>{if(!anchor||anchor.kind!=='area')return;download(await reader.crop(anchor),`page-${anchor.page}-selection.png`,'image/png');});

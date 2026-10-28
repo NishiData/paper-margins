@@ -101,3 +101,5 @@ Chrome公式資料：https://developer.chrome.com/docs/extensions/get-started/tu
 
 PDF.js：https://mozilla.github.io/pdf.js/
 
+
+論文一覧（MY PAPERS）は右上の「×」で閉じられます。画面上部の「論文一覧」で再表示できます。開閉状態は再読み込み後も維持されます。

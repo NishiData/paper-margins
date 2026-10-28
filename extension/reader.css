@@ -63,3 +63,20 @@ body[data-mode="erase"] #reading-hint{display:block}
 }
 /* Keep sticky panel contents inside the split view's scrolling boundary. */
 .app{contain:layout paint}
+
+/* Explicit tracks keep the PDF and both panels docked when the shelf is toggled. */
+body{--shelf-width:195px;--notes-width:330px}
+body .app{grid-template-columns:var(--shelf-width) minmax(0,1fr) var(--notes-width)!important}
+.shelf{grid-column:1;grid-row:1;padding-top:12px}main{grid-column:2;grid-row:1}.notes{grid-column:3;grid-row:1}
+.shelf-head{display:flex;align-items:center;justify-content:space-between;gap:5px;position:sticky;top:-12px;background:#f2f3ec;z-index:1;padding:6px 0}
+#close-shelf{padding:2px 7px;font-size:14px;flex-shrink:0}
+body.compact{--shelf-width:0px;--notes-width:0px}body.compact.show-notes{--notes-width:clamp(240px,32vw,350px)}
+@media(max-width:1050px){body{--shelf-width:0px;--notes-width:310px}}
+@media(max-width:760px){body{--notes-width:0px}body.show-notes:not(.compact){--notes-width:clamp(220px,36vw,300px)}}
+body.notes-hidden{--notes-width:0px}
+body.shelf-open{--shelf-width:195px}body.shelf-open .shelf{display:flex}
+body.shelf-hidden{--shelf-width:0px}body.shelf-hidden .shelf{display:none}
+@media(max-width:600px){
+ body.shelf-open{--shelf-width:140px}body .app{grid-template-columns:var(--shelf-width) minmax(0,1fr)!important}
+ body.show-notes .notes{grid-column:1/-1;grid-row:2}
+}
