@@ -62,7 +62,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   const occupied=badges.get(target)||[];while(occupied.some(b=>Math.abs(b.x-x)<bw+2&&Math.abs(b.y-by)<bh+2)&&by>box.y+bh+4)by-=bh+3;occupied.push({x,y:by});badges.set(target,occupied);
   target.drawRectangle({x,y:by,width:bw,height:bh,color:rgb(.93,.98,.92),borderColor:green,borderWidth:.8});draw(text,x+5,by+5,size,green,target);
   link(target,[x,by,x+bw,by+bh],destination);
-  const body=[`注釈 [${number}] - PDF末尾の「注釈と会話」を参照`,...n.turns.map(t=>`質問：${t.question}\n\n回答：${t.answer}`),n.anchor.excerpt?`選択箇所：${n.anchor.excerpt}`:''].filter(Boolean).join('\n\n');
+  const body=[`注釈 [${number}] - PDF末尾の「注釈と会話」を参照`,...n.turns.map(t=>`質問：${t.question}\n\n回答：${t.answer}`),n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)?`選択箇所：${n.anchor.excerpt}`:''].filter(Boolean).join('\n\n');
   addAnnotation(target,{Type:'Annot',Subtype:'Text',Rect:[x,Math.max(box.y+2,by-15),x+12,Math.max(box.y+2,by-15)+12],Contents:PDFHexString.fromText(body),T:PDFHexString.fromText('Paper Margins'),Name:'Comment',C:[.16,.39,.29],Open:false});
  }
  newPage();lines(title,9,muted,14);lines(`注釈 ${ordered.length} 件。本文の緑の番号から各注釈へ移動できます。`,9,muted,14);lines('リンクが使えない場合も、末尾のこのページから全文を読めます。',9,muted,14);y-=10;
@@ -78,7 +78,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   for(let j=0;j<n.turns.length;j++){
    label(`質問 ${j+1}`);lines(n.turns[j].question);label(`回答 ${j+1}`);lines(n.turns[j].answer||'（空の回答）');
   }
-  if(n.anchor.excerpt){label('選択箇所');lines(n.anchor.excerpt,9,muted,15);}
+  if(n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)){label('選択箇所');lines(n.anchor.excerpt,9,muted,15);}
   space(23);y-=10;page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:rgb(.82,.86,.82)});y-=15;
   links.push({n,number,destination:[first.ref,PDFName.of('XYZ'),M,top,null]});
   onProgress(i+1,ordered.length);await new Promise(resolve=>setTimeout(resolve,0));

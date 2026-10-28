@@ -114,9 +114,8 @@ export class ContinuousPDFReader {
   }
   anchor(v,rects,excerpt,kind) {
     const vp=v.viewport;this.pinnedPage=v.number;
-    if(kind==='area'&&!excerpt){const region=rects[0],bounds=v.element.getBoundingClientRect();
-      excerpt=Array.from(v.text.querySelectorAll('span')).filter(span=>{const b=span.getBoundingClientRect(),x=(b.left-bounds.left)/bounds.width,y=(b.top-bounds.top)/bounds.height,w=b.width/bounds.width,h=b.height/bounds.height;const ix=Math.max(0,Math.min(x+w,region.x+region.w)-Math.max(x,region.x)),iy=Math.max(0,Math.min(y+h,region.y+region.h)-Math.max(y,region.y));return ix*iy>0.25*w*h;}).map(s=>s.textContent).join(' ').trim();
-    }
+    // A region is a visual selection. PDF text codes cannot preserve math layout.
+    if(kind==='area')excerpt='';
     return {page:v.number,kind,excerpt,rects,pdfRects:rects.map(r=>[...vp.convertToPdfPoint(r.x*vp.width,r.y*vp.height),...vp.convertToPdfPoint((r.x+r.w)*vp.width,(r.y+r.h)*vp.height)])};
   }
   selectText(event) {

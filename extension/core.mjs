@@ -20,7 +20,7 @@ export function mergeTurn(note, turn) {
   return {...note, turns, updatedAt:Date.now()};
 }
 export function makePrompt(title, anchor, question) {
-  const target=anchor.excerpt||(anchor.kind==='area'?'囲んだ数式・図の選択画像を、この質問と一緒に添付します。':'選択した本文');
+  const target=anchor.kind==='area'?'囲んだ数式・図の選択画像を、この質問と一緒に添付します。':anchor.excerpt||'選択した本文';
   const image=anchor.kind==='area'?'\n\n数式・図の配置や記号は添付した選択画像で確認してください。画像が表示されていなければ、その点を伝えてください。':'';
   return `論文「${title}」のPDF ${anchor.page}ページについて質問します。\n\n対象箇所：\n${target}${image}\n\n質問：\n${question}\n\nこの引用と、私が添付した資料に基づいて説明してください。論文全体を確認できない場合は、その点を明示してください。`;
 }

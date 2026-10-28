@@ -159,10 +159,12 @@ export class StandardPDFReader extends ContinuousPDFReader {
   }
   async crop(anchor){
     this.syncViews();const v=this.views.get(anchor.page);if(!v)throw Error('対象のページが見つかりません。');
+    // PDF.js loads its FontFaces into the iframe document. The render canvas must
+    // belong to that same document, or embedded math fonts become missing glyphs.
     // Render a clean offscreen page so cropping works even after canvas eviction.
-    const page=await this.pdf.getPage(anchor.page),vp=page.getViewport({scale:Math.max(1.5,v.viewport.scale),rotation:v.viewport.rotation}),src=document.createElement('canvas');src.width=Math.ceil(vp.width);src.height=Math.ceil(vp.height);
+    const page=await this.pdf.getPage(anchor.page),vp=page.getViewport({scale:Math.max(1.5,v.viewport.scale),rotation:v.viewport.rotation}),src=this.frame.contentDocument.createElement('canvas');src.width=Math.ceil(vp.width);src.height=Math.ceil(vp.height);
     await page.render({canvasContext:src.getContext('2d'),viewport:vp}).promise;
-    const r=this.rects({anchor},v)[0],c=document.createElement('canvas');c.width=Math.max(1,Math.round(src.width*r.w));c.height=Math.max(1,Math.round(src.height*r.h));c.getContext('2d').drawImage(src,src.width*r.x,src.height*r.y,src.width*r.w,src.height*r.h,0,0,c.width,c.height);
+    const r=this.rects({anchor},v)[0],c=this.frame.contentDocument.createElement('canvas');c.width=Math.max(1,Math.round(src.width*r.w));c.height=Math.max(1,Math.round(src.height*r.h));c.getContext('2d').drawImage(src,src.width*r.x,src.height*r.y,src.width*r.w,src.height*r.h,0,0,c.width,c.height);
     return new Promise((resolve,reject)=>c.toBlob(blob=>blob?resolve(blob):reject(Error('選択画像を作成できませんでした。')),'image/png'));
   }
   async bytes(){

@@ -1,6 +1,6 @@
 # Paper Margins — 論文の余白に、理解を残す
 
-PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.3.4** です。
+PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇所へ注釈として保存する、Chrome / Edge向けの拡張機能です。現在のバージョンは **1.3.5** です。
 
 **このプロジェクトの独自コード、UI、READMEおよびドキュメントは、ユーザーの指示に基づいてGPT（ChatGPT / Codex）が作成・修正しました。** PDF.js、KaTeXなどの同梱ライブラリは、それぞれの開発者による成果物です。
 
@@ -153,7 +153,7 @@ npm run test:browser
 python scripts/package.py
 ```
 
-`dist/paper-margins-v1.3.4.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
+`dist/paper-margins-v1.3.5.zip` に、読み込み用フォルダと説明書を作成します。テスト出力やZIP、利用者のPDF・会話データはGitで管理しません。
 
 ## ライセンス・作成者表記
 
