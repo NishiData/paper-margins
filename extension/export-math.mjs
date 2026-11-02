@@ -18,7 +18,7 @@ export async function renderExportMath(tex,{display=false,size=10.5,maxWidth=507
  const svg=node.querySelector('svg');if(!svg||node.querySelector('[data-mjx-error]'))throw Error('PDFの数式を描画できませんでした：'+tex.slice(0,100));
  const [,minY,viewWidth,viewHeight]=svg.getAttribute('viewBox').split(/\s+/).map(Number);
  const factor=Math.min(size/1000,maxWidth/viewWidth,600/viewHeight),width=viewWidth*factor,height=viewHeight*factor,depth=Math.max(0,(minY+viewHeight)*factor);
- const pixels=Math.min(4,4096/Math.max(width,height));svg.setAttribute('width',String(Math.ceil(width*pixels)));svg.setAttribute('height',String(Math.ceil(height*pixels)));svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.style.color='#233d35';
+ const pixels=Math.min(4,4096/Math.max(width,height));svg.setAttribute('width',String(Math.ceil(width*pixels)));svg.setAttribute('height',String(Math.ceil(height*pixels)));svg.setAttribute('xmlns','http://www.w3.org/2000/svg');svg.style.color='#111111';
  const blob=new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),image=new Image();
  try{image.src=url;await image.decode();const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;c.getContext('2d').drawImage(image,0,0);return {dataUrl:c.toDataURL('image/png'),width,height,depth};}finally{URL.revokeObjectURL(url);}
 }

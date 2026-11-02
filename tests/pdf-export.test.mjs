@@ -8,7 +8,7 @@ const require=createRequire(import.meta.url),PDFLib=require('pdf-lib');
 const sandbox={Uint8Array,ArrayBuffer,TextDecoder,TextEncoder,setTimeout,clearTimeout,console};
 vm.runInNewContext(readFileSync(new URL('../extension/vendor/fontkit/fontkit.umd.min.js',import.meta.url),'utf8'),sandbox);
 const fontkit=sandbox.fontkit;
-const fontBytes=['japanese-font/files/noto-sans-jp-export.ttf','dejavu/DejaVuSans.ttf'].map(p=>new Uint8Array(readFileSync(new URL('../extension/vendor/'+p,import.meta.url))));
+const fontBytes=['noto-serif-jp/NotoSerifJP-Regular.ttf','dejavu/DejaVuSans.ttf'].map(p=>new Uint8Array(readFileSync(new URL('../extension/vendor/'+p,import.meta.url))));
 
 test('注釈の全文を通常のPDFページへ出力し、本文との往復リンクを保持する',async()=>{
  const {PDFDocument,PDFName,PDFArray}=PDFLib;

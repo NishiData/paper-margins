@@ -9,9 +9,9 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
  out.registerFontkit(fontkit);
  const fonts=[];
  for(const bytes of fontBytes)fonts.push({raw:fontkit.create(bytes),pdf:await out.embedFont(bytes,{subset:false})});
- const glyphs=new Map(),ink=rgb(.13,.22,.19),green=rgb(.16,.39,.29),muted=rgb(.36,.43,.39);
- const W=595.28,H=841.89,M=44,BOTTOM=48,WIDTH=W-2*M,bodySize=10.5,leading=17;
- let page=null,y=0,appendix=0,currentNumber=0;const links=[],badges=new Map();
+ const glyphs=new Map(),ink=rgb(.07,.07,.07),green=rgb(.16,.39,.29),muted=rgb(.38,.38,.38);
+ const W=595.28,H=841.89,M=57,BOTTOM=54,WIDTH=W-2*M,bodySize=11,leading=18;
+ let page=null,y=0,appendix=0,currentNumber=0,equation=0;const links=[],badges=new Map();
  function glyph(char){
   if(glyphs.has(char))return glyphs.get(char);
   const font=fonts.find(f=>f.raw.hasGlyphForCodePoint(char.codePointAt(0)));
@@ -27,11 +27,11 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
  function addAnnotation(target,object){let a=target.node.lookupMaybe(PDFName.of('Annots'),PDFArray);if(!a){a=out.context.obj([]);target.node.set(PDFName.of('Annots'),a);}a.push(out.context.register(out.context.obj(object)));}
  function link(target,rect,destination){addAnnotation(target,{Type:'Annot',Subtype:'Link',Rect:rect,Border:[0,0,0],Dest:destination});}
  function newPage(){
-  page=out.addPage([W,H]);appendix++;y=H-48;
-  draw('Paper Margins',M,y,15,green);draw(appendix===1?'注釈と会話':`注釈と会話 / 続き${currentNumber?' ['+currentNumber+']':''}`,M,y-25,12,ink);
-  page.drawLine({start:{x:M,y:y-38},end:{x:W-M,y:y-38},thickness:1,color:rgb(.77,.83,.78)});
-  draw(`注釈 ${appendix} / 元のPDFは ${original.length} ページ`,M,26,8,muted);
-  y-=62;
+  page=out.addPage([W,H]);appendix++;y=H-78;
+  draw(currentNumber?`読書注釈 / ${currentNumber} 節`:'読書注釈',M,H-37,8,muted);
+  const reference=`原論文 ${original.length} 頁`;draw(reference,W-M-width(Array.from(reference,glyph),8),H-37,8,muted);
+  page.drawLine({start:{x:M,y:H-46},end:{x:W-M,y:H-46},thickness:.35,color:rgb(.62,.62,.62)});
+  const number=String(original.length+appendix);draw(number,(W-width(Array.from(number,glyph),9))/2,27,9,ink);
  }
  function space(height){if(y-height<BOTTOM)newPage();}
  function lines(text,size=bodySize,color=ink,lineHeight=leading){
@@ -53,7 +53,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
  const mathCache=new Map();
  async function math(tex,display,size){
   if(!renderMath)throw Error('PDF出力用の数式描画処理がありません。');
-  const key=JSON.stringify([tex,display,size]);if(!mathCache.has(key))mathCache.set(key,(async()=>{const result=await renderMath(tex,{display,size,maxWidth:WIDTH});return {...result,image:await out.embedPng(result.dataUrl)};})());return mathCache.get(key);
+  const key=JSON.stringify([tex,display,size]);if(!mathCache.has(key))mathCache.set(key,(async()=>{const result=await renderMath(tex,{display,size,maxWidth:display?WIDTH-38:WIDTH});return {...result,image:await out.embedPng(result.dataUrl)};})());return mathCache.get(key);
  }
  async function richLines(text,size=bodySize,color=ink,lineHeight=leading){
   let runs=[],used=0;
@@ -66,7 +66,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   for(const part of splitMath(text)){
    if(part.math!==undefined){
     const image=await math(part.math,part.display,size);
-    if(part.display){emit();space(image.height+18);page.drawImage(image.image,{x:M+(WIDTH-image.width)/2,y:y-image.height-5,width:image.width,height:image.height});y-=image.height+18;}
+    if(part.display){emit();space(image.height+24);page.drawImage(image.image,{x:M+(WIDTH-image.width)/2,y:y-image.height-6,width:image.width,height:image.height});const number=`(${++equation})`;draw(number,W-M-width(Array.from(number,glyph),9),y-image.height/2-9,9,ink);y-=image.height+24;}
     else{if(used+image.width>WIDTH)emit();runs.push({...image,math:true});used+=image.width;}
    }else for(const token of part.text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').match(/\n|[^\S\n]+|[A-Za-z0-9_]+|./gu)||[]){
     if(token==='\n'){if(runs.length)emit();else{space(lineHeight*.6);y-=lineHeight*.6;}continue;}
@@ -75,7 +75,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   }
   emit();
  }
- function label(text){space(42);y-=8;draw(text,M,y,11,green);y-=22;}
+ function label(text){space(60);y-=12;draw(text,M,y,11,ink);y-=23;}
  function sourceRects(n,target){
   if(n.anchor.pdfRects?.length)return n.anchor.pdfRects.map(r=>[Math.min(r[0],r[2]),Math.min(r[1],r[3]),Math.max(r[0],r[2]),Math.max(r[1],r[3])]);
   const box=target.getCropBox();return n.anchor.rects.map(r=>[box.x+r.x*box.width,box.y+(1-r.y-r.h)*box.height,box.x+(r.x+r.w)*box.width,box.y+(1-r.y)*box.height]);
@@ -91,24 +91,30 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   const body=[`注釈 [${number}] - PDF末尾の「注釈と会話」を参照`,...n.turns.map(t=>`質問：${t.question}\n\n回答：${t.answer}`),n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)?`選択箇所：${n.anchor.excerpt}`:''].filter(Boolean).join('\n\n');
   addAnnotation(target,{Type:'Annot',Subtype:'Text',Rect:[x,Math.max(box.y+2,by-15),x+12,Math.max(box.y+2,by-15)+12],Contents:PDFHexString.fromText(body),T:PDFHexString.fromText('Paper Margins'),Name:'Comment',C:[.16,.39,.29],Open:false});
  }
- newPage();lines(title,9,muted,14);lines(`注釈 ${ordered.length} 件。本文の緑の番号から各注釈へ移動できます。`,9,muted,14);lines('リンクが使えない場合も、末尾のこのページから全文を読めます。',9,muted,14);y-=10;
+ async function figure(data,caption,maxHeight){
+  const image=await out.embedPng(data),scale=Math.min(WIDTH/image.width,maxHeight/image.height,1),w=image.width*scale,h=image.height*scale;
+  const captionWidth=width(Array.from(caption,glyph),9),captionHeight=Math.ceil(captionWidth/WIDTH)*14;space(h+Math.max(65,captionHeight+38));y-=8;page.drawImage(image,{x:M+(WIDTH-w)/2,y:y-h,width:w,height:h});y-=h+17;if(captionWidth<=WIDTH){draw(caption,(W-captionWidth)/2,y,9,muted);y-=14;}else lines(caption,9,muted,14);y-=9;
+ }
+ newPage();const heading='論文読書ノート';draw(heading,(W-width(Array.from(heading,glyph),19))/2,y,19,ink);y-=31;
+ lines(title,10,muted,16);y-=7;
+ lines(`原論文の選択箇所に対応する ${ordered.length} 件の注釈・質疑を収録する。`,9.5,muted,15);
+ lines('各節の見出しから原論文へ戻ることができる。',9.5,muted,15);y-=20;
  for(let i=0;i<ordered.length;i++){
-  const n=ordered[i],number=i+1;currentNumber=number;space(130);y-=8;
-  const first=page,top=y+14;await richLines(`[${number}] ${n.title||'注釈'}`,13,green,21);
+  const n=ordered[i],number=i+1;currentNumber=number;space(140);y-=14;
+  const first=page,top=y+14;await richLines(`${number}　${n.title||'注釈'}`,14,ink,24);
   const sourcePage=original[n.anchor.page-1],r=sourceRects(n,sourcePage)[0];
   link(first,[M,top-22,W-M,top],[sourcePage.ref,PDFName.of('XYZ'),r[0],r[3]+30,null]);
-  lines(`元のPDF ${n.anchor.page} ページ / 見出しをクリックすると元の箇所へ戻ります。`,8.5,muted,14);
+  lines(`出典：原論文 p. ${n.anchor.page}`,9,muted,15);
   if(n.tags?.length)lines('タグ：'+n.tags.join(' / '),8.5,muted,14);
-  if(n.selectionImage){const image=await out.embedPng(n.selectionImage.dataUrl),scale=Math.min(WIDTH/image.width,115/image.height,1);const iw=image.width*scale,ih=image.height*scale;space(ih+18);page.drawImage(image,{x:M,y:y-ih-7,width:iw,height:ih});y-=ih+18;}
-  for(const attachment of n.attachments||[]){
-   const image=await out.embedPng(attachment.dataUrl),scale=Math.min(WIDTH/image.width,330/image.height,1),iw=image.width*scale,ih=image.height*scale;space(ih+48);label('添付画像：'+attachment.name);page.drawImage(image,{x:M,y:y-ih-7,width:iw,height:ih});y-=ih+18;
-  }
-  if(!n.turns.length){label('質問');await richLines(n.title||'（質問なし）');label('回答');lines('回答はまだ保存されていません。');}
+  let figureNumber=0;
+  if(n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)){label('原文');lines(n.anchor.excerpt,9.5,muted,16);y-=5;}
+  if(n.selectionImage)await figure(n.selectionImage.dataUrl,`図 ${number}.${++figureNumber}　原論文の選択箇所（p. ${n.anchor.page}）`,175);
+  for(const attachment of n.attachments||[])await figure(attachment.dataUrl,`図 ${number}.${++figureNumber}　${attachment.name}`,290);
+  if(!n.turns.length){label(`${number}.1　問い`);await richLines(n.title||'（質問なし）');label('回答');lines('回答はまだ保存されていません。');}
   for(let j=0;j<n.turns.length;j++){
-   label(`質問 ${j+1}`);await richLines(n.turns[j].question);label(`回答 ${j+1}`);await richLines(n.turns[j].answer||'（空の回答）');
+   label(`${number}.${j+1}　問い`);await richLines(n.turns[j].question);label('回答');await richLines(n.turns[j].answer||'（空の回答）');
   }
-  if(n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)){label('選択箇所');lines(n.anchor.excerpt,9,muted,15);}
-  space(23);y-=10;page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:rgb(.82,.86,.82)});y-=15;
+  y-=18;
   links.push({n,number,destination:[first.ref,PDFName.of('XYZ'),M,top,null]});
   onProgress(i+1,ordered.length);await new Promise(resolve=>setTimeout(resolve,0));
  }
@@ -117,6 +123,6 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
 }
 
 export async function loadExportFonts(){
- const paths=['vendor/japanese-font/files/noto-sans-jp-export.ttf','vendor/dejavu/DejaVuSans.ttf'];
+ const paths=['vendor/noto-serif-jp/NotoSerifJP-Regular.ttf','vendor/dejavu/DejaVuSans.ttf'];
  return Promise.all(paths.map(async path=>{const response=await fetch(new URL(path,import.meta.url));if(!response.ok)throw Error('PDF書き出し用フォントを読み込めませんでした。');return new Uint8Array(await response.arrayBuffer());}));
 }
