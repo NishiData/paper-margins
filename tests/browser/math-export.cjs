@@ -31,7 +31,20 @@ g\longmapsto hgh^{-1}
  const download=page.waitForEvent('download');await page.locator('#export-pdf').click();const saved=await download;await saved.saveAs('artifacts/math-export-qa.pdf');const out=await PDFDocument.load(fs.readFileSync('artifacts/math-export-qa.pdf'));assert.ok(out.getPageCount()>=3);const images=out.getPages().slice(1).reduce((sum,p)=>sum+(p.node.Resources().lookupMaybe(PDFName.of('XObject'),require('pdf-lib').PDFDict)?.keys().length||0),0);assert.ok(images>=10,images);
  // Bad formula errors stay visible instead of silently exporting raw LaTeX.
  const rejected=await page.evaluate(async()=>{const {renderExportMath}=await import('./export-math.mjs');try{await renderExportMath(String.raw`\notARealCommand{x}`);return false;}catch{return true;}});assert.equal(rejected,true);
- assert.deepEqual(errors,[]);assert.deepEqual(remote,[]);console.log('PASS: inline/display math, fractions/matrices/symbols, long paginated answers, PDF math images and local-only rendering; invalid TeX fails explicitly.');
+
+ // Open the exported bytes in the real bundled viewer and click the yellow bubble.
+ const pdf=page.frameLocator('#pdf-viewer');
+ const target=await pdf.locator('body').evaluate(async(_,base64)=>{
+  const app=PDFViewerApplication;await app.open({data:Uint8Array.from(atob(base64),c=>c.charCodeAt(0))});await app.pdfViewer.pagesPromise;await app.pdfViewer.onePageRendered;
+  const annotations=await (await app.pdfDocument.getPage(1)).getAnnotations(),bubble=annotations.find(a=>a.subtype==='Link'&&a.contentsObj?.str?.startsWith('注釈 [1]'));if(!bubble)throw Error('Yellow bubble link missing');
+  const index=await app.pdfDocument.getPageIndex(bubble.dest[0]);return {id:bubble.id,page:index+1};
+ },fs.readFileSync('artifacts/math-export-qa.pdf').toString('base64'));
+ await pdf.locator(`.page[data-page-number="1"] [data-annotation-id="${target.id}"] a`).click();
+ await pdf.locator('body').evaluate(async(_,targetPage)=>{const app=PDFViewerApplication;for(let i=0;i<50&&app.pdfViewer.currentPageNumber!==targetPage;i++)await new Promise(r=>setTimeout(r,50));if(app.pdfViewer.currentPageNumber!==targetPage)throw Error('Yellow bubble did not navigate');},target.page);
+ const back=await pdf.locator('body').evaluate(async(_,number)=>{const a=await (await PDFViewerApplication.pdfDocument.getPage(number)).getAnnotations();return a.find(x=>x.subtype==='Link'&&x.dest)?.id;},target.page);
+ await pdf.locator(`.page[data-page-number="${target.page}"] [data-annotation-id="${back}"] a`).click();
+ await pdf.locator('body').evaluate(async()=>{const app=PDFViewerApplication;for(let i=0;i<50&&app.pdfViewer.currentPageNumber!==1;i++)await new Promise(r=>setTimeout(r,50));if(app.pdfViewer.currentPageNumber!==1)throw Error('Back link did not navigate');});
+ assert.deepEqual(errors,[]);assert.deepEqual(remote,[]);console.log('PASS: inline/display math, fractions/matrices/symbols, long paginated answers, PDF math images and local-only rendering; invalid TeX fails explicitly; yellow speech bubble navigates to its appendix section and heading returns to the source.');
  }finally{await browser.close();server.close();}
 }
 main().catch(e=>{console.error(e);server.close();process.exit(1)});

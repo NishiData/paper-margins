@@ -25,7 +25,7 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   for(const g of items){if(g.font!==font){flush();font=g.font;}run+=g.text;}flush();
  }
  function addAnnotation(target,object){let a=target.node.lookupMaybe(PDFName.of('Annots'),PDFArray);if(!a){a=out.context.obj([]);target.node.set(PDFName.of('Annots'),a);}a.push(out.context.register(out.context.obj(object)));}
- function link(target,rect,destination){addAnnotation(target,{Type:'Annot',Subtype:'Link',Rect:rect,Border:[0,0,0],Dest:destination});}
+ function link(target,rect,destination,properties={}){addAnnotation(target,{Type:'Annot',Subtype:'Link',Rect:rect,Border:[0,0,0],Dest:destination,...properties});}
  function newPage(){
   page=out.addPage([W,H]);appendix++;y=H-78;
   draw(currentNumber?`読書注釈 / ${currentNumber} 節`:'読書注釈',M,H-37,8,muted);
@@ -84,12 +84,16 @@ export async function exportAnnotatedPDF(source, notes, {PDFLib, fontkit, fontBy
   const target=original[n.anchor.page-1],rects=sourceRects(n,target),r=rects[0],box=target.getCropBox();
   for(const [x0,y0,x1,y1] of rects)target.drawRectangle({x:x0,y:y0,width:Math.max(1,x1-x0),height:Math.max(1,y1-y0),borderWidth:.7,borderColor:green,color:rgb(.84,.94,.84),opacity:.15});
   const text=`[${number}]`,size=9,bw=width(Array.from(text,glyph),size)+10,bh=17;
-  let x=Math.max(box.x+2,Math.min(r[0]-bw-3,box.x+box.width-bw-2)),by=Math.max(box.y+2,Math.min(r[3]-bh,box.y+box.height-bh-2));
-  const occupied=badges.get(target)||[];while(occupied.some(b=>Math.abs(b.x-x)<bw+2&&Math.abs(b.y-by)<bh+2)&&by>box.y+bh+4)by-=bh+3;occupied.push({x,y:by});badges.set(target,occupied);
+  let x=Math.max(box.x+2,Math.min(r[0]-bw-3,box.x+box.width-bw-2)),by=Math.max(box.y+20,Math.min(r[3]-bh,box.y+box.height-bh-2));
+  const occupied=badges.get(target)||[];while(occupied.some(b=>Math.abs(b.x-x)<bw+2&&Math.abs(b.y-by)<bh+20)&&by>box.y+bh+22)by-=bh+21;occupied.push({x,y:by});badges.set(target,occupied);
   target.drawRectangle({x,y:by,width:bw,height:bh,color:rgb(.93,.98,.92),borderColor:green,borderWidth:.8});draw(text,x+5,by+5,size,green,target);
   link(target,[x,by,x+bw,by+bh],destination);
   const body=[`注釈 [${number}] - PDF末尾の「注釈と会話」を参照`,...n.turns.map(t=>`質問：${t.question}\n\n回答：${t.answer}`),n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)?`選択箇所：${n.anchor.excerpt}`:''].filter(Boolean).join('\n\n');
-  addAnnotation(target,{Type:'Annot',Subtype:'Text',Rect:[x,Math.max(box.y+2,by-15),x+12,Math.max(box.y+2,by-15)+12],Contents:PDFHexString.fromText(body),T:PDFHexString.fromText('Paper Margins'),Name:'Comment',C:[.16,.39,.29],Open:false});
+  // A native Text icon consumes clicks to open a popup. Draw a speech bubble
+  // ourselves and use a standard internal Link so clicking navigates in PDF readers.
+  const bubbleY=Math.max(box.y+2,by-18),bubbleRect=[x,bubbleY,x+16,bubbleY+16];
+  target.drawSvgPath('M 1 1 L 15 1 L 15 11 L 8 11 L 4 15 L 4 11 L 1 11 Z',{x,y:bubbleY+16,color:rgb(1,.94,.63),borderColor:rgb(.65,.51,.16),borderWidth:.8});
+  link(target,bubbleRect,destination,{NM:PDFHexString.fromText('pm-note-link-'+n.id),Contents:PDFHexString.fromText(body),T:PDFHexString.fromText('Paper Margins')});
  }
  async function figure(data,caption,maxHeight){
   const image=await out.embedPng(data),scale=Math.min(WIDTH/image.width,maxHeight/image.height,1),w=image.width*scale,h=image.height*scale;
