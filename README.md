@@ -4,6 +4,14 @@ PDFを読みながらChatGPTに質問し、質問と回答を論文の対応箇�
 
 **このプロジェクトの独自コード、UI、READMEおよびドキュメントは、ユーザーの指示に基づいてGPT（ChatGPT / Codex）が作成・修正しました。** PDF.js、KaTeXなどの同梱ライブラリは、それぞれの開発者による成果物です。
 
+## デモ動画
+
+[![Paper Marginsの操作デモ：PDFを読み、質問し、回答を注釈に保存する](docs/media/demo-preview.gif)](https://github.com/NishiData/paper-margins/raw/refs/heads/main/docs/media/paper-margins-demo.mp4)
+
+**[音声付きデモ動画をダウンロード（MP4・約2分8秒）](https://github.com/NishiData/paper-margins/raw/refs/heads/main/docs/media/paper-margins-demo.mp4)**
+
+上のプレビューは無音のダイジェストです。クリックすると、日本語ナレーション・BGM付きのフル動画をダウンロードできます。PDFの読み込み、質問と回答の保存、数式・図の範囲選択、書き込み、注釈付きPDFの出力を紹介しています。サンプル資料とデモ会話で操作を再現しています。
+
 ## できること
 
 - 各注釈の「＋ 画像を添付」で画像を複数保存。個別削除・ダウンロード・バックアップ復元・注釈付きPDFへの出力に対応。
