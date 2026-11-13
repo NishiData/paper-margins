@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-const local={},session={},listeners={},sent=[],opened=[];let activeTab={id:2,url:'https://chatgpt.com/c/test'};
+const local={},session={},listeners={},sent=[],opened=[],activated=[],focused=[];
+let activeTab={id:2,url:'https://chatgpt.com/c/test'},readerTabs=[],noteReceiver;
 const area=data=>({get:async k=>{await new Promise(r=>setTimeout(r,5));return structuredClone(k?{[k]:data[k]}:data);},set:async v=>{await new Promise(r=>setTimeout(r,5));Object.assign(data,structuredClone(v));},remove:async k=>{delete data[k];},setAccessLevel:async()=>{}});
-globalThis.chrome={storage:{local:area(local),session:area(session)},runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.message=fn}},commands:{onCommand:{addListener:fn=>listeners.command=fn}},action:{onClicked:{addListener(){}}},tabs:{create:async options=>{opened.push(options);return {id:100+opened.length};},query:async()=>[activeTab],sendMessage:async(id,message)=>sent.push({id,message}),onRemoved:{addListener(){}}}};
+globalThis.chrome={storage:{local:area(local),session:area(session)},runtime:{getURL:p=>'chrome-extension://test/'+p,onMessage:{addListener:fn=>listeners.message=fn}},commands:{onCommand:{addListener:fn=>listeners.command=fn}},action:{onClicked:{addListener(){}}},tabs:{create:async options=>{opened.push(options);return {id:100+opened.length};},query:async options=>options.active?[activeTab]:readerTabs,sendMessage:async(id,message)=>{sent.push({id,message});return {ok:id===noteReceiver};},update:async id=>activated.push(id),onRemoved:{addListener(){}}},windows:{update:async id=>focused.push(id)}};
 await import('../extension/background.js');
 const sender={url:'https://chatgpt.com/c/test',tab:{id:2,url:'https://chatgpt.com/c/test'}};
 const request=(m,s=sender)=>new Promise(r=>listeners.message(m,s,r));
@@ -34,3 +35,27 @@ assert.ok((await request({type:'ADD_NOTE_IMAGES',id:'n',images:[{...image,id:'ba
 const snapshot=structuredClone(local['pm:note:n']);await request({type:'REMOVE_NOTE_IMAGE',id:'n',imageId:image.id},internal);assert.equal(local['pm:note:n'].attachments.length,0);assert.equal(local['pm:note:n'].turns.length,snapshot.turns.length);
 await request({type:'IMPORT_NOTES',notes:[snapshot]},internal);assert.equal(local['pm:note:n'].attachments.length,1);await request({type:'IMPORT_NOTES',notes:[snapshot]},internal);assert.equal(local['pm:note:n'].attachments.length,1);
 console.log('PASS: atomic image/answer/tag updates; attachments survive import, deduplicate and remove individually; unauthorized and invalid image updates rejected.');
+
+const paperUrl='chrome-extension://test/reader.html?paper='+note.anchor.docId;
+const otherTab={id:11,windowId:1,url:'chrome-extension://test/reader.html?paper='+'b'.repeat(64)};
+const targetTab={id:12,windowId:3,url:paperUrl};
+readerTabs=[otherTab,targetTab];
+noteReceiver=targetTab.id;
+assert.ok((await request({type:'OPEN_READER'})).ok);
+assert.deepEqual(sent.at(-1),{id:12,message:{type:'SHOW_NOTE',docId:note.anchor.docId,noteId:note.id}});
+assert.deepEqual(activated,[12]);
+assert.deepEqual(focused,[3]);
+session['pm:context:2'].readerTabId=otherTab.id; // The original reader switched papers.
+readerTabs=[otherTab];
+assert.ok((await request({type:'OPEN_READER'})).ok);
+assert.deepEqual(opened.at(-1),{url:paperUrl+'&note=n'});
+assert.deepEqual(activated,[12]);
+assert.ok((await request({type:'SAVE_TURN',noteId:'another-note',turn:{id:'late',question:'Q',answer:'A'}})).error);
+assert.equal(local['pm:note:n'].turns.some(t=>t.id==='late'),false);
+const state=await Promise.all([
+ request({type:'UPDATE_CAPTURE_STATE',noteId:'n',auto:false}),
+ request({type:'UPDATE_CAPTURE_STATE',noteId:'n',path:'/c/test',first:'Q1'})
+]);
+assert.ok(state.every(r=>r.ok));
+assert.deepEqual((await request({type:'GET_CONTEXT'})).capture,{auto:false,path:'/c/test',first:'Q1'});
+console.log('PASS: return uses the connected PDF and annotation; switched reader falls back to a correct new tab; stale writes rejected; autosave state retained.');

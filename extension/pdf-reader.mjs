@@ -133,10 +133,10 @@ export class ContinuousPDFReader {
     let drag=null;
     const rect=e=>{const b=v.element.getBoundingClientRect(),x=Math.min(b.width,Math.max(0,e.clientX-b.left)),y=Math.min(b.height,Math.max(0,e.clientY-b.top));return {left:Math.min(x,drag.x),top:Math.min(y,drag.y),width:Math.abs(x-drag.x),height:Math.abs(y-drag.y)};};
     const draw=r=>Object.assign(v.draft.style,{display:'block',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
-    v.area.addEventListener('pointerdown',e=>{e.preventDefault();const b=v.element.getBoundingClientRect();for(const p of this.views.values())p.draft.style.display='none';drag={x:Math.min(b.width,Math.max(0,e.clientX-b.left)),y:Math.min(b.height,Math.max(0,e.clientY-b.top))};v.area.setPointerCapture(e.pointerId);});
-    v.area.addEventListener('pointermove',e=>{if(drag)draw(rect(e));});
+    v.area.addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();const b=v.element.getBoundingClientRect();for(const p of this.views.values())p.draft.style.display='none';drag={x:Math.min(b.width,Math.max(0,e.clientX-b.left)),y:Math.min(b.height,Math.max(0,e.clientY-b.top))};v.area.setPointerCapture(e.pointerId);});
+    v.area.addEventListener('pointermove',e=>{if(!drag)return;const r=rect(e);if(r.width>=6||r.height>=6)drag.moved=true;draw(r);});
     v.area.addEventListener('pointercancel',()=>{drag=null;v.draft.style.display='none';});
-    v.area.addEventListener('pointerup',e=>{if(!drag)return;const r=rect(e);drag=null;if(r.width<6||r.height<6)return;draw(r);const normalized=normalizeRect(r,{left:0,top:0,width:v.viewport.width,height:v.viewport.height});this.onSelect(this.anchor(v,[normalized],'','area'));});
+    v.area.addEventListener('pointerup',e=>{if(!drag)return;const r=rect(e),moved=drag.moved;drag=null;if(r.width<6||r.height<6){v.draft.style.display='none';if(!moved&&r.width<6&&r.height<6)this.activateAreaLink?.(v,e);return;}draw(r);const normalized=normalizeRect(r,{left:0,top:0,width:v.viewport.width,height:v.viewport.height});this.onSelect(this.anchor(v,[normalized],'','area'));});
   }
   async crop(anchor) {
     const v=this.views.get(anchor.page);if(!v)throw Error('対象のページが見つかりません。');await this.render(v);

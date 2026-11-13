@@ -4,9 +4,13 @@
 .page-marks,.area-layer{position:absolute;inset:0;pointer-events:none;z-index:7}
 .mark{position:absolute;background:#e7c9651a;border:1px solid #d4b14622;border-radius:2px;pointer-events:auto;cursor:pointer;padding:0;min-width:3px;min-height:3px}
 .mark:hover{background:#e7c96529}.mark.focused{background:#86baa51f;border-color:#43886833}
-.area-layer{display:none;cursor:crosshair;touch-action:none;pointer-events:auto;z-index:8}
+/* Native PDF links must win hit testing over saved question marks. Keep the
+   annotation layer non-interactive outside its own annotations (PDF.js default),
+   and keep the drag-selection layer above it while selecting an image. */
+.pdfViewer:not(.edit-mode) .annotationLayer{z-index:8}
+.area-layer{display:none;cursor:crosshair;touch-action:none;pointer-events:auto;z-index:9}
 .area-mode .area-layer{display:block}.area-mode .textLayer{pointer-events:none}
-.draft-mark{position:absolute;z-index:9;pointer-events:none;background:#659d891f;border:2px solid #46846b66;display:none}
+.draft-mark{position:absolute;z-index:10;pointer-events:none;background:#659d891f;border:2px solid #46846b66;display:none}
 .edit-mode .page-marks{display:none}
 /* PDF selection is managed by the shelf so that the document and Q&A stay bound. */
 #secondaryOpenFile,#viewsManagerAddFileButton,#imageAltTextSettings,#imageAltTextSettingsSeparator{display:none!important}

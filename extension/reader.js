@@ -78,6 +78,17 @@ function renderNotes(){const q=$('search').value.trim().toLowerCase();$('note-co
  if(n.selectionImage){const img=document.createElement('img');img.className='selection-image';img.src=n.selectionImage.dataUrl;img.alt='質問した数式・図の選択画像';card.append(img);}if(n.anchor.excerpt&&!(n.anchor.kind==='area'&&n.selectionImage)){const quote=document.createElement('blockquote');quote.textContent=n.anchor.excerpt;card.append(quote);}for(const t of n.turns){const details=document.createElement('details');details.className='turn';details.open=selected===n.id;const summary=document.createElement('summary');summary.textContent=t.question;const answer=document.createElement('div');answer.className='answer';answer.textContent=t.answer;details.append(summary,answer);const url=safeURL(t.url);if(url){const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener';link.textContent='ChatGPTの元の会話 ↗';details.append(link);}card.append(details);if(window.renderMathInElement)renderMathInElement(answer,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}],throwOnError:false,trust:false});}
  const foot=document.createElement('div');foot.className='note-footer';const add=document.createElement('button');add.textContent='＋ 会話を貼り付け';add.onclick=()=>{anchor=n.anchor;selected=n.id;openManual();};const del=document.createElement('button');del.textContent='削除';del.onclick=guarded(async()=>{if(confirm('この注釈と会話を削除しますか？'))await send({type:'DELETE_NOTE',id:n.id});});foot.append(add,del);card.append(foot);$('note-list').append(card);}}
 async function selectNote(n,{navigate=true}={}){selected=n.id;anchor=n.anchor;reader.pinnedPage=n.anchor.page;$('selection-panel').hidden=true;setNotesOpen(true);if(navigate)await reader.jumpToAnchor(n.anchor);drawMarks();renderNotes();$('card-'+n.id)?.scrollIntoView({block:'nearest'});}
+async function showConnectedNote(docId,noteId){
+ await openQueue;
+ if(doc?.id!==docId)return {ok:false};
+ await refreshNotes();
+ const note=notes.find(n=>n.id===noteId&&n.anchor.docId===docId);
+ if(!note||doc?.id!==docId)return {ok:false};
+ $('search').value='';
+ await selectNote(note);
+ if(!note.turns.length)status('この注釈にはまだ会話が保存されていません。');
+ return {ok:true};
+}
 function newNote(){return {id:crypto.randomUUID(),anchor,docTitle:doc.name,title:$('question').value.trim().slice(0,90)||anchor.excerpt?.slice(0,70)||`P. ${anchor.page}の注釈`,tags:[],turns:[],createdAt:Date.now(),updatedAt:Date.now()};}
 bind('ask',async()=>{if(!anchor)throw Error('PDFの対象箇所を選んでください。');const question=$('question').value.trim();if(!question){$('question').focus();throw Error('質問を入力してください。');}
  const note=newNote(),attachPDF=$('attach-pdf').checked;if(note.anchor.kind==='area'){status('選択画像を作成しています…');note.selectionImage=await selectionImage(note.anchor);}if(doc?.id!==note.anchor.docId)throw Error('PDFが切り替わりました。対象箇所を選び直してください。');const width=screen.availWidth,left=screen.availLeft||0,top=screen.availTop||0,height=screen.availHeight;const rw=Math.round(width*.55);const bounds=width>=1100?{left,top,height,readerWidth:rw,chatWidth:width-rw}:null;
@@ -100,6 +111,19 @@ bind('export-pdf',exportPDF);
 window.addEventListener('beforeunload',event=>{if(editSession?.dirty){event.preventDefault();event.returnValue='';}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)guarded(()=>editSession?.flush())();});
 chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&Object.keys(changes).some(k=>k.startsWith('pm:note:')))guarded(refreshNotes)();});
+chrome.runtime.onMessage?.addListener((message,sender,respond)=>{
+ if(message.type!=='SHOW_NOTE')return;
+ showConnectedNote(message.docId,message.noteId).then(respond,()=>respond({ok:false}));
+ return true;
+});
 window.addEventListener('focus',guarded(refreshShelf));
 let resizeTimer;new ResizeObserver(()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(guarded(renderPage),150);}).observe(V);
-guarded(async()=>{await refreshShelf();const id=new URL(location.href).searchParams.get('paper');if(!id)return;if(!/^[a-f0-9]{64}$/.test(id))throw Error('PDFの指定が不正です。');const saved=await store('get',id);if(!saved)throw Error('PDFが見つかりません。「PDFを開く」から読み込んでください。');await openPaper(saved);})();
+guarded(async()=>{
+ await refreshShelf();
+ const params=new URL(location.href).searchParams,id=params.get('paper'),noteId=params.get('note');
+ if(!id)return;
+ if(!/^[a-f0-9]{64}$/.test(id))throw Error('PDFの指定が不正です。');
+ const saved=await store('get',id);if(!saved)throw Error('PDFが見つかりません。「PDFを開く」から読み込んでください。');
+ await openPaper(saved);
+ if(noteId&&!(await showConnectedNote(id,noteId)).ok)status('対象の注釈が見つかりません。');
+})();
