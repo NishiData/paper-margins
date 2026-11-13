@@ -24,5 +24,38 @@ async function main(){fs.mkdirSync(path.resolve('artifacts'),{recursive:true});c
  // An explicit PDF connection shows the panel in a previously ordinary ChatGPT tab.
  await old.evaluate(()=>bridgeListener({type:'CONTEXT_READY',context:{noteId:'new-link',docTitle:'new.pdf',page:3,prompt:'A new PDF question'}}));await oldPanel.waitFor();assert.match(await oldPanel.locator('#target').textContent(),/3ページ/);
 
+ const restored=await b.newPage(),context={noteId:'reload-note',docTitle:'reload.pdf',page:7,prompt:'Original PDF question'};
+ const requests=[];
+ await restored.exposeFunction('captureRequest',m=>{
+  if(m.type==='GET_CONTEXT')return context;
+  if(m.type==='RETURN_COUNT')return requests.filter(r=>r.type==='OPEN_READER').length;
+  if(m.type==='UPDATE_CAPTURE_STATE'){
+   const {type,noteId,...state}=m;
+   context.capture={...context.capture,...state};
+  }
+  requests.push(m);
+  return {ok:true};
+ });
+ await restored.addInitScript(()=>{window.chrome={runtime:{onMessage:{addListener(){}},sendMessage:window.captureRequest}};});
+ let conversation='<div data-message-author-role="user">Original PDF question</div><div data-message-author-role="assistant" data-message-id="reload-answer">Rendered before the extension started</div>';
+ await restored.route('https://fixture.test/c/reload',route=>route.fulfill({contentType:'text/html',body:'<main>'+conversation+'</main>'}));
+ await restored.goto('https://fixture.test/c/reload');
+ const restoredPanel=restored.locator('#paper-margins-bridge');
+ const startBridge=async()=>{for(const name of ['capture-core.js','conversation-guard.js','input-bridge.js','chatgpt.js'])await restored.addScriptTag({path:path.resolve('extension',name)});await restoredPanel.waitFor();};
+ await startBridge();
+ await restoredPanel.locator('#reader').click();
+ await restored.waitForFunction(async()=>await window.captureRequest({type:'RETURN_COUNT'})===1);
+ assert.deepEqual(requests.filter(m=>['SAVE_TURN','OPEN_READER'].includes(m.type)).map(m=>m.type),['SAVE_TURN','OPEN_READER']);
+ assert.equal(requests.find(m=>m.type==='SAVE_TURN').turn.answer,'Rendered before the extension started');
+ await restoredPanel.locator('#auto').uncheck();
+ await restored.waitForFunction(async()=>!(await window.captureRequest({type:'GET_CONTEXT'})).capture.auto);
+ conversation+='<div data-message-author-role="user">Do not save this question</div><div data-message-author-role="assistant">Do not save this answer</div>';
+ await restored.reload();
+ await startBridge();
+ assert.equal(await restoredPanel.locator('#auto').isChecked(),false);
+ await restoredPanel.locator('#reader').click();
+ await restored.waitForFunction(async()=>await window.captureRequest({type:'RETURN_COUNT'})===2);
+ assert.equal(requests.filter(m=>m.type==='SAVE_TURN').length,1);
+
  await b.close();console.log('PASS: reconnect and save existing answer without repeating question; hidden stop ignored; automatic completed-answer save; manual save despite visible stop; role/turn/Markdown layouts; correct question pairing; selected answer fallback; write failures not reported as success.');}
 main().catch(e=>{console.error(e);process.exit(1)});

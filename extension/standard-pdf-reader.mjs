@@ -157,6 +157,15 @@ export class StandardPDFReader extends ContinuousPDFReader {
     const bounds=v.element.getBoundingClientRect(),rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0).map(r=>normalizeRect(r,bounds));
     if(rects.length)this.onSelect(this.anchor(v,rects,s.toString(),'text'));
   }
+  activateAreaLink(v,event){
+    // An image-selection drag still owns the overlay. A stationary click can
+    // follow the original PDF link underneath without changing the tool.
+    const d=v.element.ownerDocument;
+    const link=d.elementsFromPoint(event.clientX,event.clientY).find(el=>el.matches('.linkAnnotation a[href]')&&v.element.contains(el)&&el.closest('.annotationLayer:not(.disabled)'));
+    if(!link)return;
+    const {clientX,clientY,ctrlKey,metaKey,shiftKey,altKey,button}=event;
+    link.dispatchEvent(new d.defaultView.MouseEvent('click',{bubbles:true,cancelable:true,view:d.defaultView,clientX,clientY,ctrlKey,metaKey,shiftKey,altKey,button}));
+  }
   async crop(anchor){
     this.syncViews();const v=this.views.get(anchor.page);if(!v)throw Error('対象のページが見つかりません。');
     // PDF.js loads its FontFaces into the iframe document. The render canvas must
